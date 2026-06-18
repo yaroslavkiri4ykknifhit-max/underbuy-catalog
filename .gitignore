@@ -1,0 +1,40 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Compiler outputs
+dist/
+dist-ssr/
+tmp/
+out/
+
+# Build files
+.eslintcache
+.parcel-cache
+.cache
+.vite
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Environment variables (Crucial to exclude .env)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# Supabase directories to ignore (e.g. database file if SQLite was used, though here it's Supabase cloud, but just in case)
+*.db
+*.sqlite
