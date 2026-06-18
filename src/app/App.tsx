@@ -31,6 +31,7 @@ const PRODUCTS_MOCK = [
   {
     id: 1,
     name: "ARCHIVE JACKET 01",
+    brand: "UNDERBUY",
     category: "ЖАКЕТЫ",
     price: "€ 1 200",
     img: "https://images.unsplash.com/photo-1554882195-8cf792f9a571",
@@ -44,6 +45,7 @@ const PRODUCTS_MOCK = [
   {
     id: 2,
     name: "VOID COAT",
+    brand: "RICK OWENS",
     category: "ЖАКЕТЫ",
     price: "€ 2 450",
     img: "https://images.unsplash.com/photo-1595065666634-4725aa7e8379",
@@ -57,6 +59,7 @@ const PRODUCTS_MOCK = [
   {
     id: 3,
     name: "STRUCTURE SHIRT",
+    brand: "YOHJI YAMAMOTO",
     category: "ЛОНГИ/СВИТШОТЫ",
     price: "€ 850",
     img: "https://images.unsplash.com/photo-1645561305502-63a9ba09ab09",
@@ -70,6 +73,7 @@ const PRODUCTS_MOCK = [
   {
     id: 4,
     name: "ARTEK STOOL 60",
+    brand: "ARTEK",
     category: "АКСЕССУАРЫ",
     price: "€ 450",
     img: "https://images.unsplash.com/photo-1718049719671-3c0a592ac8c0",
@@ -83,6 +87,7 @@ const PRODUCTS_MOCK = [
   {
     id: 5,
     name: "SILENT CHAIR",
+    brand: "BALENCIAGA",
     category: "АКСЕССУАРЫ",
     price: "€ 1 100",
     img: "https://images.unsplash.com/photo-1554104683-c7063687d649",
@@ -99,6 +104,7 @@ export default function App() {
   const [products, setProducts] = useState<any[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("ВСЕ");
+  const [activeBrand, setActiveBrand] = useState<string | null>(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [activeSize, setActiveSize] = useState<string | null>(null);
   const [activeColor, setActiveColor] = useState<string | null>(null);
@@ -284,36 +290,26 @@ export default function App() {
     setCartItems([]);
   };
 
-  // Filter products based on selected category, size, color, and search query
+  // Filter products based on selected category, brand, and search query
   const filteredProducts = products.filter((product) => {
     // Category filter
     if (activeCategory !== "ВСЕ") {
       if (product.category !== activeCategory) return false;
     }
     
-    // Size filter
-    if (activeSize) {
-      const productSizes = product.sizes && product.sizes.length > 0 
-        ? product.sizes 
-        : SIZES;
-      if (!productSizes.includes(activeSize)) return false;
-    }
-
-    // Color filter
-    if (activeColor) {
-      const productColors = product.colors && product.colors.length > 0 
-        ? product.colors 
-        : COLORS;
-      if (!productColors.includes(activeColor)) return false;
+    // Brand filter
+    if (activeBrand && activeBrand !== "ВСЕ") {
+      if (product.brand !== activeBrand) return false;
     }
 
     // Search query filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       const matchesName = product.name.toLowerCase().includes(query);
+      const matchesBrand = product.brand && product.brand.toLowerCase().includes(query);
       const matchesCategory = product.category.toLowerCase().includes(query);
       const matchesDesc = product.description && product.description.toLowerCase().includes(query);
-      if (!matchesName && !matchesCategory && !matchesDesc) return false;
+      if (!matchesName && !matchesBrand && !matchesCategory && !matchesDesc) return false;
     }
 
     return true;
@@ -384,95 +380,54 @@ export default function App() {
         )}
       </header>
 
-      {/* Categories & Filter Bar */}
-      <div className="sticky top-[65px] md:top-[73px] z-30 bg-white border-b border-gray-200 shadow-sm">
-        <div className="flex items-center justify-between px-4 relative">
-          
-          {/* Scrollable Categories */}
-          <div className="flex-1 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden flex items-center gap-6 md:gap-10 py-4">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  setActiveCategory(cat);
-                  setIsProfileOpen(false);
-                  setIsAdminOpen(false);
-                }}
-                className={`text-[10px] md:text-[11px] tracking-[0.2em] transition-colors cursor-pointer shrink-0 ${
-                  activeCategory === cat ? "text-black font-medium" : "text-gray-400 hover:text-black"
-                }`}
-              >
-                {cat}
-              </button>
+      {/* Categories & Filter Bar (Two Minimalist Dropdowns) */}
+      <div className="sticky top-[65px] md:top-[73px] z-30 bg-white border-b border-gray-200 shadow-sm p-4 flex gap-4 md:gap-8 justify-center md:justify-start overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden">
+        {/* Category Select */}
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] tracking-[0.2em] text-gray-400 font-extrabold">КАТЕГОРИЯ:</span>
+          <select 
+            value={activeCategory} 
+            onChange={(e) => {
+              setActiveCategory(e.target.value);
+              setIsProfileOpen(false);
+              setIsAdminOpen(false);
+            }}
+            className="bg-transparent border border-black px-4 py-2 text-[9px] tracking-[0.2em] font-extrabold uppercase rounded-none focus:outline-none appearance-none pr-8 relative cursor-pointer"
+            style={{
+              backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'><path d='M1 1L5 5L9 1' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 12px center'
+            }}
+          >
+            {CATEGORIES.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
             ))}
-            <div className="w-12 shrink-0 md:w-24"></div>
-          </div>
-
-          {/* Filters Toggle */}
-          <div className="absolute right-0 top-0 bottom-0 px-4 border-l border-gray-200 flex items-center bg-white z-10 shadow-[-10px_0_20px_-10px_rgba(255,255,255,1)]">
-            <button 
-              onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-              className="flex items-center gap-2 text-[10px] tracking-[0.2em] hover:opacity-70 transition-opacity cursor-pointer bg-white"
-            >
-              <SlidersHorizontal strokeWidth={1} className="w-4 h-4" />
-              <span className="hidden md:inline">ФИЛЬТРЫ</span>
-              {isFiltersOpen ? <Minus strokeWidth={1} className="w-3 h-3" /> : <Plus strokeWidth={1} className="w-3 h-3" />}
-            </button>
-          </div>
+          </select>
         </div>
 
-        {/* Expandable Filters Panel */}
-        {isFiltersOpen && (
-          <div className="w-full bg-white border-t border-gray-200 p-4 md:p-8 animate-in slide-in-from-top-2 duration-300">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-6xl">
-              {/* Size Filter */}
-              <div>
-                <h3 className="text-[10px] text-gray-400 tracking-[0.2em] mb-4">РАЗМЕР</h3>
-                <div className="flex flex-wrap gap-2">
-                  {SIZES.map(size => (
-                    <button
-                      key={size}
-                      onClick={() => setActiveSize(size === activeSize ? null : size)}
-                      className={`border px-4 py-2 text-[10px] tracking-[0.1em] transition-colors cursor-pointer ${
-                        activeSize === size ? "border-black bg-black text-white" : "border-gray-200 hover:border-black"
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Color Filter */}
-              <div>
-                <h3 className="text-[10px] text-gray-400 tracking-[0.2em] mb-4">ЦВЕТ</h3>
-                <div className="flex flex-wrap gap-2">
-                  {COLORS.map(color => (
-                    <button
-                      key={color}
-                      onClick={() => setActiveColor(color === activeColor ? null : color)}
-                      className={`border px-4 py-2 text-[10px] tracking-[0.1em] transition-colors cursor-pointer ${
-                        activeColor === color ? "border-black bg-black text-white" : "border-gray-200 hover:border-black"
-                      }`}
-                    >
-                      {color}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action */}
-              <div className="flex items-end md:justify-end">
-                <button 
-                  onClick={() => setIsFiltersOpen(false)}
-                  className="w-full md:w-auto bg-black text-white px-8 py-3 text-[10px] tracking-[0.2em] hover:bg-gray-800 transition-colors cursor-pointer"
-                >
-                  ПРИМЕНИТЬ ФИЛЬТРЫ
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Brand Select */}
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] tracking-[0.2em] text-gray-400 font-extrabold">БРЕНД:</span>
+          <select 
+            value={activeBrand || "ВСЕ"} 
+            onChange={(e) => {
+              setActiveBrand(e.target.value === "ВСЕ" ? null : e.target.value);
+              setIsProfileOpen(false);
+              setIsAdminOpen(false);
+            }}
+            className="bg-transparent border border-black px-4 py-2 text-[9px] tracking-[0.2em] font-extrabold uppercase rounded-none focus:outline-none appearance-none pr-8 relative cursor-pointer"
+            style={{
+              backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'><path d='M1 1L5 5L9 1' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 12px center'
+            }}
+          >
+            <option value="ВСЕ">ВСЕ БРЕНДЫ</option>
+            {Array.from(new Set(products.map(p => p.brand).filter(Boolean))).map((brand: any) => (
+              <option key={brand} value={brand}>{brand}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -533,41 +488,9 @@ export default function App() {
 
         {!isProductsLoading && (
           <>
-            {/* Editorial Hint Space */}
-            <div className="flex flex-col items-center justify-center pb-8 mb-8">
-              <div className="flex flex-col items-center gap-3 text-gray-400 group cursor-default max-w-[280px]">
-                <svg 
-                  width="24" 
-                  height="32" 
-                  viewBox="0 0 24 32" 
-                  fill="none" 
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="text-gray-400 -mr-12 animate-pulse"
-                >
-                  <path 
-                    d="M12 30C12 30 11 15 15 8C16 6 18 4 18 4" 
-                    stroke="currentColor" 
-                    strokeWidth="1.5" 
-                    strokeLinecap="round" 
-                    style={{ fill: 'none', strokeDasharray: '40', strokeDashoffset: '0' }}
-                  />
-                  <path 
-                    d="M12 4C14 4 18 4 18 4C18 4 18 8 18 10" 
-                    stroke="currentColor" 
-                    strokeWidth="1.5" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span className="font-serif italic text-[11px] md:text-[13px] lowercase tracking-wide text-center leading-relaxed">
-                  листайте категории вправо и настраивайте фильтры для точного поиска
-                </span>
-              </div>
-            </div>
-            
             {/* Grid */}
             {filteredProducts.length === 0 ? (
-              <div className="text-center py-24 text-xs tracking-[0.2em] text-gray-400">
+              <div className="text-center py-24 text-[10px] tracking-[0.2em] text-gray-400 font-extrabold">
                 ПО ВАШЕМУ ЗАПРОСУ НИЧЕГО НЕ НАЙДЕНО
               </div>
             ) : (
@@ -590,17 +513,20 @@ export default function App() {
                           className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${product.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
                         />
                         {product.is_new && (
-                          <div className="absolute top-4 left-4 bg-black text-white px-2 py-1 text-[8px] tracking-[0.2em]">
+                          <div className="absolute top-4 left-4 bg-black text-white px-2 py-1 text-[8px] tracking-[0.2em] font-extrabold">
                             NEW
                           </div>
                         )}
                       </div>
                       <div className="flex justify-between items-start mt-2">
                         <div className="flex flex-col gap-1">
-                          <h2 className="text-[11px] md:text-xs tracking-[0.1em] font-medium">{product.name}</h2>
-                          <p className="text-[10px] tracking-[0.1em] text-gray-500">{product.category}</p>
+                          {product.brand && (
+                            <span className="text-[9px] tracking-[0.2em] text-gray-400 font-extrabold">{product.brand}</span>
+                          )}
+                          <h2 className="text-[11px] md:text-xs tracking-[0.1em] font-bold">{product.name}</h2>
+                          <p className="text-[10px] tracking-[0.1em] text-gray-500 font-bold">{product.category}</p>
                         </div>
-                        <span className="text-[12px] md:text-sm font-bold tracking-[0.1em] shrink-0 ml-4">{product.price}</span>
+                        <span className="text-[12px] md:text-sm font-extrabold tracking-[0.1em] shrink-0 ml-4">{product.price}</span>
                       </div>
                     </div>
                   );
@@ -636,15 +562,20 @@ export default function App() {
             <div className="max-w-md mx-auto w-full flex flex-col gap-6">
               
               <div>
-                <h1 className="text-2xl md:text-4xl font-light tracking-tighter leading-none mb-2">
+                {selectedProduct.brand && (
+                  <span className="text-[10px] tracking-[0.3em] text-gray-400 font-extrabold block mb-1">
+                    {selectedProduct.brand}
+                  </span>
+                )}
+                <h1 className="text-2xl md:text-4xl font-extrabold tracking-tighter leading-none mb-2">
                   {selectedProduct.name}
                 </h1>
-                <p className="text-xs tracking-[0.2em] text-gray-500">
+                <p className="text-xs tracking-[0.2em] text-gray-500 font-bold">
                   {selectedProduct.category}
                 </p>
               </div>
 
-              <div className="text-base md:text-lg tracking-[0.1em] font-extrabold">
+              <div className="text-base md:text-lg tracking-[0.1em] font-black">
                 {selectedProduct.price}
               </div>
 

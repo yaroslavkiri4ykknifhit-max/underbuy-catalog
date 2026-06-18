@@ -33,6 +33,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
   // Form states
   const [name, setName] = useState("");
+  const [brand, setBrand] = useState("");
   const [category, setCategory] = useState(CATEGORIES_LIST[0]);
   const [price, setPrice] = useState("€ ");
   const [description, setDescription] = useState("");
@@ -82,6 +83,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
     }
 
     if (!name.trim()) return toast.error("Введите название товара");
+    if (!brand.trim()) return toast.error("Введите бренд товара");
     if (!price.trim()) return toast.error("Введите цену");
     if (!imageFile) return toast.error("Загрузите изображение товара");
 
@@ -108,10 +110,10 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
       const imageUrl = publicUrlData.publicUrl;
 
-      // 3. Создание записи в таблице products
       const { error: dbError } = await supabase.from("products").insert([
         {
           name: name.toUpperCase(),
+          brand: brand.toUpperCase(),
           category,
           price,
           image_url: imageUrl,
@@ -130,6 +132,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       
       // Сброс формы
       setName("");
+      setBrand("");
       setPrice("€ ");
       setDescription("");
       setIsNew(false);
@@ -257,6 +260,18 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                 placeholder="НАПРИМЕР: ARCHIVE JACKET 01"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black placeholder:text-gray-300"
+              />
+            </div>
+
+            {/* Brand */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] text-gray-400 tracking-[0.2em]">БРЕНД</label>
+              <input
+                type="text"
+                placeholder="НАПРИМЕР: UNDERBUY, RICK OWENS"
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
                 className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black placeholder:text-gray-300"
               />
             </div>
