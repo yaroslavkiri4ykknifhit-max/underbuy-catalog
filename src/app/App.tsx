@@ -129,23 +129,44 @@ export default function App() {
   // Load products from Supabase
   useEffect(() => {
     async function loadProducts() {
+      // Если ключи не заданы или являются плейсхолдерами, мгновенно показываем моки без ожидания сетевого таймаута
+      const isPlaceholder = 
+        !import.meta.env.VITE_SUPABASE_URL || 
+        import.meta.env.VITE_SUPABASE_URL.includes("placeholder") ||
+        !import.meta.env.VITE_SUPABASE_ANON_KEY ||
+        import.meta.env.VITE_SUPABASE_ANON_KEY === "placeholder";
+
+      if (isPlaceholder) {
+        setProducts(PRODUCTS_MOCK);
+        setIsProductsLoading(false);
+        return;
+      }
+
       setIsProductsLoading(true);
+
+      // Таймаут в 2.5 секунды для предотвращения долгого ожидания при медленной сети
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Supabase timeout")), 2500)
+      );
+
       try {
-        const { data, error } = await supabase
+        const fetchPromise = supabase
           .from("products")
           .select("*")
           .order("created_at", { ascending: false });
 
-        if (error) throw error;
+        // Запуск гонки между запросом к БД и таймаутом
+        const result: any = await Promise.race([fetchPromise, timeoutPromise]);
 
-        if (data && data.length > 0) {
-          setProducts(data);
+        if (result.error) throw result.error;
+
+        if (result.data && result.data.length > 0) {
+          setProducts(result.data);
         } else {
-          // Fallback if DB is empty
           setProducts(PRODUCTS_MOCK);
         }
       } catch (err) {
-        console.warn("Using mock products (Supabase not connected/configured yet):", err);
+        console.warn("Using mock products (failed loading from Supabase / timeout):", err);
         setProducts(PRODUCTS_MOCK);
       } finally {
         setIsProductsLoading(false);
