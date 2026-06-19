@@ -138,6 +138,58 @@ const REVIEWS_MOCK = [
   }
 ];
 
+const KNOWN_BRANDS = [
+  { keywords: ["RICK OWENS", "RICKOWENS"], clean: "RICK OWENS" },
+  { keywords: ["BALENCIAGA"], clean: "BALENCIAGA" },
+  { keywords: ["VETEMENTS"], clean: "VETEMENTS" },
+  { keywords: ["CHROME HEARTS", "CHROMEHEARTS"], clean: "CHROME HEARTS" },
+  { keywords: ["MAISON MARGIELA", "MARGIELA"], clean: "MAISON MARGIELA" },
+  { keywords: ["YOHJI YAMAMOTO", "YAMAMOTO"], clean: "YOHJI YAMAMOTO" },
+  { keywords: ["RAF SIMONS", "RAFSIMONS"], clean: "RAF SIMONS" },
+  { keywords: ["UNDERCOVER"], clean: "UNDERCOVER" },
+  { keywords: ["HELMUT LANG", "HELMUTLANG"], clean: "HELMUT LANG" },
+  { keywords: ["KIKO KOSTADINOV", "KIKO"], clean: "KIKO KOSTADINOV" },
+  { keywords: ["ALYX", "1017 ALYX 9SM"], clean: "ALYX" },
+  { keywords: ["OFF-WHITE", "OFF WHITE"], clean: "OFF-WHITE" },
+  { keywords: ["STONE ISLAND", "STONEISLAND"], clean: "STONE ISLAND" },
+  { keywords: ["C.P. COMPANY", "CP COMPANY", "C.P COMPANY"], clean: "C.P. COMPANY" },
+  { keywords: ["NUMBER (N)INE", "NUMBER NINE", "NUMBER(N)INE"], clean: "NUMBER (N)INE" },
+  { keywords: ["CARHARTT"], clean: "CARHARTT" },
+  { keywords: ["ARC'TERYX", "ARCTERYX"], clean: "ARC'TERYX" },
+  { keywords: ["STUSSY"], clean: "STUSSY" },
+  { keywords: ["SUPREME"], clean: "SUPREME" },
+  { keywords: ["DIESEL"], clean: "DIESEL" },
+  { keywords: ["YEEZY"], clean: "YEEZY" },
+  { keywords: ["UNDERBUY"], clean: "UNDERBUY" }
+];
+
+const CATEGORY_WORDS = [
+  "HOODIE", "ZIP", "ZIPUP", "ZIP-UP", "ЗИПКА", "ХУДИ", "JACKET", "ЖАКЕТ", "COAT", "ПАЛЬТО", 
+  "PANTS", "ШТАНЫ", "JEANS", "ДЖИНСЫ", "TSHIRT", "T-SHIRT", "ФУТБОЛКА", "SWEATSHIRT", "СВИТШОТ", 
+  "LONGSLEEVE", "ЛОНГСЛИВ", "BAG", "СУМКА", "BELT", "РЕМЕНЬ", "HAT", "CAP", "КЕПКА", "ШАПКА", 
+  "SNEAKERS", "КРОССОВКИ", "SHOES", "ОБУВЬ", "TEE", "SHIRT"
+];
+
+export function cleanBrandName(rawBrand: string | null | undefined): string {
+  if (!rawBrand) return "";
+  const upper = rawBrand.trim().toUpperCase();
+  
+  // 1. Check known brands first
+  for (const item of KNOWN_BRANDS) {
+    for (const keyword of item.keywords) {
+      if (upper.includes(keyword)) {
+        return item.clean;
+      }
+    }
+  }
+  
+  // 2. Otherwise clean category words from the end of the brand string
+  let words = upper.split(/\s+/);
+  words = words.filter(word => !CATEGORY_WORDS.includes(word));
+  
+  return words.join(" ").trim() || upper;
+}
+
 function CustomSelect({ 
   label, 
   value, 
@@ -332,7 +384,10 @@ export default function App() {
         import.meta.env.VITE_SUPABASE_ANON_KEY === "placeholder";
 
       if (isPlaceholder) {
-        setProducts(PRODUCTS_MOCK);
+        setProducts(PRODUCTS_MOCK.map((p: any) => ({
+          ...p,
+          brand: cleanBrandName(p.brand)
+        })));
         setIsProductsLoading(false);
         return;
       }
@@ -356,13 +411,23 @@ export default function App() {
         if (result.error) throw result.error;
 
         if (result.data && result.data.length > 0) {
-          setProducts(result.data);
+          const cleaned = result.data.map((p: any) => ({
+            ...p,
+            brand: cleanBrandName(p.brand)
+          }));
+          setProducts(cleaned);
         } else {
-          setProducts(PRODUCTS_MOCK);
+          setProducts(PRODUCTS_MOCK.map((p: any) => ({
+            ...p,
+            brand: cleanBrandName(p.brand)
+          })));
         }
       } catch (err) {
         console.warn("Using mock products (failed loading from Supabase / timeout):", err);
-        setProducts(PRODUCTS_MOCK);
+        setProducts(PRODUCTS_MOCK.map((p: any) => ({
+          ...p,
+          brand: cleanBrandName(p.brand)
+        })));
       } finally {
         setIsProductsLoading(false);
       }
