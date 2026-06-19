@@ -219,4 +219,19 @@
   animation: cartPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+/* Minimalist scrollbar for custom dropdowns */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #000000;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #333333;
+}
+
 

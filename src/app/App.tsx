@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Home, 
   Heart, 
@@ -11,7 +11,8 @@ import {
   X, 
   ArrowRight, 
   ShoppingBag, 
-  Loader2 
+  Loader2,
+  ChevronDown
 } from "lucide-react";
 import { supabase } from "./utils/supabase";
 import CartDrawer, { CartItem } from "./components/ui/CartDrawer";
@@ -99,6 +100,70 @@ const PRODUCTS_MOCK = [
     colors: ["СЕРЫЙ", "ЧЕРНЫЙ"]
   }
 ];
+
+function CustomSelect({ 
+  label, 
+  value, 
+  options, 
+  onChange 
+}: { 
+  label: string; 
+  value: string; 
+  options: string[]; 
+  onChange: (val: string) => void; 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Закрывать список при клике вне его области
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative flex-1 flex flex-col gap-1 min-w-[100px]">
+      <span className="text-[8px] tracking-[0.2em] text-gray-400 font-extrabold hidden md:block">
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full bg-white border border-black px-3 py-2.5 text-[9px] tracking-[0.2em] font-extrabold uppercase flex justify-between items-center cursor-pointer select-none rounded-none text-left"
+      >
+        <span className="truncate mr-2">{value}</span>
+        <ChevronDown strokeWidth={1.5} className={`w-3.5 h-3.5 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 w-full bg-white border border-black border-t-0 z-50 max-h-[126px] overflow-y-auto shadow-lg rounded-none scrollbar-thin">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => {
+                onChange(opt);
+                setIsOpen(false);
+              }}
+              className={`w-full px-3 py-2.5 text-[9px] tracking-[0.2em] font-extrabold text-left uppercase transition-colors rounded-none border-b border-gray-100 last:border-0 ${
+                value === opt 
+                  ? "bg-black text-white" 
+                  : "bg-white text-black hover:bg-gray-100"
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function App() {
   const [products, setProducts] = useState<any[]>([]);
@@ -380,54 +445,28 @@ export default function App() {
         )}
       </header>
 
-      {/* Categories & Filter Bar (Two Minimalist Dropdowns) */}
-      <div className="sticky top-[65px] md:top-[73px] z-30 bg-white border-b border-gray-200 shadow-sm p-4 flex gap-4 md:gap-8 justify-center md:justify-start overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden">
-        {/* Category Select */}
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] tracking-[0.2em] text-gray-400 font-extrabold">КАТЕГОРИЯ:</span>
-          <select 
-            value={activeCategory} 
-            onChange={(e) => {
-              setActiveCategory(e.target.value);
-              setIsProfileOpen(false);
-              setIsAdminOpen(false);
-            }}
-            className="bg-transparent border border-black px-4 py-2 text-[9px] tracking-[0.2em] font-extrabold uppercase rounded-none focus:outline-none appearance-none pr-8 relative cursor-pointer"
-            style={{
-              backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'><path d='M1 1L5 5L9 1' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>")`,
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'right 12px center'
-            }}
-          >
-            {CATEGORIES.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Brand Select */}
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] tracking-[0.2em] text-gray-400 font-extrabold">БРЕНД:</span>
-          <select 
-            value={activeBrand || "ВСЕ"} 
-            onChange={(e) => {
-              setActiveBrand(e.target.value === "ВСЕ" ? null : e.target.value);
-              setIsProfileOpen(false);
-              setIsAdminOpen(false);
-            }}
-            className="bg-transparent border border-black px-4 py-2 text-[9px] tracking-[0.2em] font-extrabold uppercase rounded-none focus:outline-none appearance-none pr-8 relative cursor-pointer"
-            style={{
-              backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'><path d='M1 1L5 5L9 1' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>")`,
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'right 12px center'
-            }}
-          >
-            <option value="ВСЕ">ВСЕ БРЕНДЫ</option>
-            {Array.from(new Set(products.map(p => p.brand).filter(Boolean))).map((brand: any) => (
-              <option key={brand} value={brand}>{brand}</option>
-            ))}
-          </select>
-        </div>
+      {/* Categories & Filter Bar (Two Custom Minimalist Dropdowns) */}
+      <div className="sticky top-[65px] md:top-[73px] z-30 bg-white border-b border-gray-200 shadow-sm p-4 flex gap-4 w-full box-border">
+        <CustomSelect 
+          label="КАТЕГОРИЯ" 
+          value={activeCategory} 
+          options={CATEGORIES} 
+          onChange={(val) => {
+            setActiveCategory(val);
+            setIsProfileOpen(false);
+            setIsAdminOpen(false);
+          }} 
+        />
+        <CustomSelect 
+          label="БРЕНД" 
+          value={activeBrand || "ВСЕ БРЕНДЫ"} 
+          options={["ВСЕ БРЕНДЫ", ...(Array.from(new Set(products.map(p => p.brand).filter(Boolean))) as string[])]} 
+          onChange={(val) => {
+            setActiveBrand(val === "ВСЕ БРЕНДЫ" ? null : val);
+            setIsProfileOpen(false);
+            setIsAdminOpen(false);
+          }} 
+        />
       </div>
 
       {/* Main Content */}
