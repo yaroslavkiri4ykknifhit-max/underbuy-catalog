@@ -284,6 +284,7 @@ export default function App() {
   // Sizing and Color selection in PDP
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [activePdpImageIndex, setActivePdpImageIndex] = useState(0);
 
   // Cart and Modals State
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -441,9 +442,11 @@ export default function App() {
       
       setSelectedSize(productSizes[0] || "OS");
       setSelectedColor(productColors[0] || "ЧЕРНЫЙ");
+      setActivePdpImageIndex(0);
     } else {
       setSelectedSize(null);
       setSelectedColor(null);
+      setActivePdpImageIndex(0);
     }
   }, [selectedProduct]);
 
@@ -480,7 +483,7 @@ export default function App() {
             id: selectedProduct.id,
             name: selectedProduct.name,
             price: selectedProduct.price,
-            img: selectedProduct.image_url || selectedProduct.img,
+            img: (selectedProduct.images && selectedProduct.images.length > 0) ? selectedProduct.images[0] : (selectedProduct.image_url || selectedProduct.img),
             size: selectedSize,
             color: selectedColor,
             quantity: 1,
@@ -809,7 +812,7 @@ export default function App() {
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 md:gap-x-8 gap-y-16">
                     {filteredProducts.map((product) => {
-                      const productImg = product.image_url || product.img;
+                      const productImg = (product.images && product.images.length > 0) ? product.images[0] : (product.image_url || product.img);
                       const aspectClass = product.aspect || "aspect-[3/4]";
                       const spanClass = product.span || "col-span-1 md:col-span-1";
 
@@ -910,12 +913,35 @@ export default function App() {
           </button>
 
           {/* Left: Huge Image */}
-          <div className="w-full md:w-1/2 h-[50vh] md:h-screen bg-gray-100 overflow-hidden relative">
-            <img 
-              src={selectedProduct.image_url || selectedProduct.img} 
-              alt={selectedProduct.name}
-              className={`w-full h-full object-cover ${selectedProduct.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
-            />
+          <div className="w-full md:w-1/2 h-[50vh] md:h-screen bg-gray-100 overflow-hidden relative flex flex-col justify-end">
+            {(() => {
+              const pdpImages = (selectedProduct.images && selectedProduct.images.length > 0)
+                ? selectedProduct.images
+                : [selectedProduct.image_url || selectedProduct.img];
+              const activePdpImage = pdpImages[activePdpImageIndex] || pdpImages[0];
+              return (
+                <>
+                  <img 
+                    src={activePdpImage} 
+                    alt={selectedProduct.name}
+                    className={`w-full h-full object-cover absolute inset-0 ${selectedProduct.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
+                  />
+                  {pdpImages.length > 1 && (
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10 bg-white/80 backdrop-blur-sm px-3 py-2 border border-black/10">
+                      {pdpImages.map((_, idx) => (
+                        <button
+                          key={`pdp-dot-${idx}`}
+                          onClick={() => setActivePdpImageIndex(idx)}
+                          className={`w-2 h-2 transition-all cursor-pointer ${
+                            activePdpImageIndex === idx ? "bg-black w-5" : "bg-gray-300 hover:bg-black"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Right: Details */}
