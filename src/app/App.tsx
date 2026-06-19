@@ -169,12 +169,19 @@ const CATEGORY_WORDS = [
   "LONGSLEEVE", "ЛОНГСЛИВ", "BAG", "СУМКА", "BELT", "РЕМЕНЬ", "HAT", "CAP", "КЕПКА", "ШАПКА", 
   "SNEAKERS", "КРОССОВКИ", "SHOES", "ОБУВЬ", "TEE", "SHIRT", "BOMBER", "БОМБЕР", "PUFFER", 
   "ПУХОВИК", "SWEATER", "СВИТЕР", "VEST", "ЖИЛЕТ", "ЖИЛЕТКА", "CARDIGAN", "КАРДИГАН", 
-  "PULLOVER", "ПУЛОВЕР", "POLO", "ПОЛО", "BOOTS", "БОТИНКИ", "SLIDES", "СЛАЙДЫ", "SANDALS", "САНДАЛИИ"
+  "PULLOVER", "ПУЛОВЕР", "POLO", "ПОЛО", "BOOTS", "БОТИНКИ", "SLIDES", "СЛАЙДЫ", "SANDALS", "САНДАЛИИ",
+  "COLLECTION", "COLLAB", "LIMITED", "EDITION", "SERIES", "PRE-FALL", "RESORT", 
+  "FALL", "WINTER", "SPRING", "SUMMER", "SS", "FW", "AW", "COLLABORATION", "X"
 ];
 
 export function cleanBrandName(rawBrand: string | null | undefined): string {
   if (!rawBrand) return "НЕИЗВЕСТНО";
   let upper = rawBrand.trim().toUpperCase();
+  
+  // Clean seasonal collections (e.g., SS22, FW23, 22SS, 2024)
+  upper = upper.replace(/\b(SS|FW|AW|AH|SP|SU|FA|WI)\d{2,4}\b/g, "");
+  upper = upper.replace(/\b\d{2,4}(SS|FW|AW|AH|SP|SU|FA|WI)\b/g, "");
+  upper = upper.replace(/\b(19|20)\d{2}\b/g, "");
   
   // Clean punctuation at boundaries but keep spaces
   upper = upper.replace(/^[^A-ZА-Я0-9]+|[^A-ZА-Я0-9]+$/g, "");
@@ -188,7 +195,7 @@ export function cleanBrandName(rawBrand: string | null | undefined): string {
     }
   }
   
-  // 2. Otherwise clean category words from the brand string
+  // 2. Otherwise clean category/collection words from the brand string
   let words = upper.split(/\s+/);
   words = words.filter(word => {
     // Strip non-alphanumeric characters for comparison
