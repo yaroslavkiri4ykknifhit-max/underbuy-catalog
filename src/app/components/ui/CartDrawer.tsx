@@ -25,13 +25,66 @@ interface CartDrawerProps {
 
 // Helpers for price parsing and formatting
 export const parsePrice = (priceStr: string) => {
+  if (typeof priceStr === "number") return priceStr;
   const digits = priceStr.replace(/[^0-9]/g, "");
   return parseInt(digits) || 0;
 };
 
-export const formatPrice = (amount: number) => {
-  return "€ " + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+// BYN = EUR * 3.5
+export const formatBYN = (amountOrStr: number | string) => {
+  const val = typeof amountOrStr === "string" ? parsePrice(amountOrStr) : amountOrStr;
+  const bynAmount = Math.round(val * 3.5);
+  return bynAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " Br";
 };
+
+// RUB = EUR * 100
+export const formatRUB = (amountOrStr: number | string) => {
+  const val = typeof amountOrStr === "string" ? parsePrice(amountOrStr) : amountOrStr;
+  const rubAmount = Math.round(val * 100);
+  return rubAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽";
+};
+
+// Legacy fallback
+export const formatPrice = (amount: number) => {
+  return formatBYN(amount);
+};
+
+export function PriceDisplay({ 
+  price, 
+  size = "md", 
+  align = "end" 
+}: { 
+  price: string | number; 
+  size?: "sm" | "md" | "lg"; 
+  align?: "start" | "end" | "center"; 
+}) {
+  const alignClass = align === "start" ? "items-start text-left" : align === "center" ? "items-center text-center" : "items-end text-right";
+  
+  let mainSize = "text-[14px]";
+  let subSize = "text-[11px]";
+  
+  if (size === "md") {
+    mainSize = "text-[17px] md:text-[20px]";
+    subSize = "text-[12px] md:text-[14px]";
+  } else if (size === "lg") {
+    mainSize = "text-[26px] md:text-[32px]";
+    subSize = "text-[16px] md:text-[18px]";
+  } else if (size === "sm") {
+    mainSize = "text-[14px] md:text-[15px]";
+    subSize = "text-[11px] md:text-[12px]";
+  }
+
+  return (
+    <div className={`flex flex-col ${alignClass} shrink-0`}>
+      <span className={`price-text ${mainSize} text-black leading-none`}>
+        {formatBYN(price)}
+      </span>
+      <span className={`price-text ${subSize} text-black/50 mt-1 leading-none`}>
+        {formatRUB(price)}
+      </span>
+    </div>
+  );
+}
 
 export default function CartDrawer({
   isOpen,
@@ -59,7 +112,7 @@ export default function CartDrawer({
     (sum, item) => sum + parsePrice(item.price) * item.quantity,
     0
   );
-  const totalPriceStr = formatPrice(totalPriceVal);
+  const totalPriceStr = `${formatBYN(totalPriceVal)} (${formatRUB(totalPriceVal)})`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +181,7 @@ export default function CartDrawer({
   const handleTelegramCheckout = () => {
     let messageText = "Здравствуйте! Хочу оформить заказ:\n\n";
     cartItems.forEach((item, index) => {
-      messageText += `${index + 1}. ${item.name} (Размер: ${item.size}, Цвет: ${item.color}) - ${item.quantity} шт. | ${item.price}\n`;
+      messageText += `${index + 1}. ${item.name} (Размер: ${item.size}, Цвет: ${item.color}) - ${item.quantity} шт. | ${formatBYN(item.price)} (${formatRUB(item.price)})\n`;
     });
     messageText += `\nИтоговая сумма: ${totalPriceStr}`;
     
@@ -249,9 +302,7 @@ export default function CartDrawer({
                         </button>
                       </div>
 
-                      <span className="price-text text-[16px] text-black">
-                        {formatPrice(parsePrice(item.price) * item.quantity)}
-                      </span>
+                      <PriceDisplay price={parsePrice(item.price) * item.quantity} size="sm" align="end" />
                     </div>
                   </div>
                 </div>
@@ -262,7 +313,7 @@ export default function CartDrawer({
             <div className="p-6 border-t border-gray-200 flex flex-col gap-4">
               <div className="flex justify-between items-center text-xs tracking-[0.2em]">
                 <span>ИТОГО</span>
-                <span className="price-text text-[18px] md:text-[20px] text-black">{totalPriceStr}</span>
+                <PriceDisplay price={totalPriceVal} size="md" align="end" />
               </div>
               
               <button
@@ -347,7 +398,7 @@ export default function CartDrawer({
             <div className="p-6 border-t border-gray-200 flex flex-col gap-4 bg-white">
               <div className="flex justify-between items-center text-xs tracking-[0.2em] mb-2">
                 <span>ИТОГО К ОПЛАТЕ</span>
-                <span className="price-text text-[18px] md:text-[20px] text-black">{totalPriceStr}</span>
+                <PriceDisplay price={totalPriceVal} size="md" align="end" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

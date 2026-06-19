@@ -35,7 +35,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState(CATEGORIES_LIST[0]);
-  const [price, setPrice] = useState("€ ");
+  const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [isNew, setIsNew] = useState(false);
   const [selectedSizes, setSelectedSizes] = useState<string[]>(["OS"]);
@@ -133,7 +133,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
       // Сброс формы
       setName("");
       setBrand("");
-      setPrice("€ ");
+      setPrice("");
       setDescription("");
       setIsNew(false);
       setSelectedSizes(["OS"]);
@@ -297,7 +297,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                 <label className="text-[10px] text-gray-400 tracking-[0.2em]">ЦЕНА</label>
                 <input
                   type="text"
-                  placeholder="€ 1 200"
+                  placeholder="1200"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black"

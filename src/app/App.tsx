@@ -15,7 +15,7 @@ import {
   ChevronDown
 } from "lucide-react";
 import { supabase } from "./utils/supabase";
-import CartDrawer, { CartItem } from "./components/ui/CartDrawer";
+import CartDrawer, { CartItem, formatBYN, formatRUB, PriceDisplay } from "./components/ui/CartDrawer";
 import AdminPanel from "./components/AdminPanel";
 import { Toaster, toast } from "sonner";
 
@@ -411,10 +411,7 @@ export default function App() {
           </div>
         ) : (
           <>
-            <button className="p-2 -ml-2 group cursor-pointer">
-              <Menu strokeWidth={1} className="w-5 h-5 md:w-6 md:h-6 group-hover:opacity-50 transition-opacity" />
-            </button>
-            <h1 className="text-base md:text-xl tracking-[0.4em] font-light pl-2 cursor-pointer" onClick={() => {
+            <h1 className="text-[22px] md:text-[26px] tracking-[0.05em] font-black cursor-pointer select-none leading-none" onClick={() => {
               setActiveCategory("ВСЕ");
               setIsProfileOpen(false);
               setIsAdminOpen(false);
@@ -565,7 +562,7 @@ export default function App() {
                           <h2 className="text-[11px] md:text-xs tracking-[0.1em] font-bold">{product.name}</h2>
                           <p className="text-[10px] tracking-[0.1em] text-gray-500 font-bold">{product.category}</p>
                         </div>
-                        <span className="price-text text-[17px] md:text-[20px] text-black shrink-0 ml-4">{product.price}</span>
+                        <PriceDisplay price={product.price} size="md" align="end" />
                       </div>
                     </div>
                   );
@@ -614,9 +611,7 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="price-text text-[26px] md:text-[32px] text-black leading-none">
-                {selectedProduct.price}
-              </div>
+              <PriceDisplay price={selectedProduct.price} size="lg" align="start" />
 
               <p className="text-xs leading-relaxed text-gray-600 normal-case">
                 {selectedProduct.description}
