@@ -565,7 +565,7 @@ export default function App() {
                           <h2 className="text-[11px] md:text-xs tracking-[0.1em] font-bold">{product.name}</h2>
                           <p className="text-[10px] tracking-[0.1em] text-gray-500 font-bold">{product.category}</p>
                         </div>
-                        <span className="price-text text-[15px] md:text-[18px] text-black shrink-0 ml-4">{product.price}</span>
+                        <span className="price-text text-[17px] md:text-[20px] text-black shrink-0 ml-4">{product.price}</span>
                       </div>
                     </div>
                   );
@@ -614,7 +614,7 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="price-text text-[20px] md:text-[24px] text-black">
+              <div className="price-text text-[26px] md:text-[32px] text-black leading-none">
                 {selectedProduct.price}
               </div>
 

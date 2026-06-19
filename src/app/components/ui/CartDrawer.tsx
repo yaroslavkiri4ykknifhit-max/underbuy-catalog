@@ -249,7 +249,7 @@ export default function CartDrawer({
                         </button>
                       </div>
 
-                      <span className="price-text text-[14px] text-black">
+                      <span className="price-text text-[16px] text-black">
                         {formatPrice(parsePrice(item.price) * item.quantity)}
                       </span>
                     </div>
@@ -262,7 +262,7 @@ export default function CartDrawer({
             <div className="p-6 border-t border-gray-200 flex flex-col gap-4">
               <div className="flex justify-between items-center text-xs tracking-[0.2em]">
                 <span>ИТОГО</span>
-                <span className="price-text text-base text-black">{totalPriceStr}</span>
+                <span className="price-text text-[18px] md:text-[20px] text-black">{totalPriceStr}</span>
               </div>
               
               <button
@@ -347,7 +347,7 @@ export default function CartDrawer({
             <div className="p-6 border-t border-gray-200 flex flex-col gap-4 bg-white">
               <div className="flex justify-between items-center text-xs tracking-[0.2em] mb-2">
                 <span>ИТОГО К ОПЛАТЕ</span>
-                <span className="price-text text-base text-black">{totalPriceStr}</span>
+                <span className="price-text text-[18px] md:text-[20px] text-black">{totalPriceStr}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
