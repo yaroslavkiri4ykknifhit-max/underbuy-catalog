@@ -72,3 +72,26 @@ USING (bucket_id = 'product-images');
 CREATE POLICY "Allow uploads to product-images" 
 ON storage.objects FOR INSERT 
 WITH CHECK (bucket_id = 'product-images');
+
+-- 4. Создание таблицы отзывов (reviews)
+CREATE TABLE IF NOT EXISTS public.reviews (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    author TEXT NOT NULL,
+    rating INTEGER DEFAULT 5,
+    date TEXT NOT NULL,
+    text TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Включение Row Level Security для reviews
+ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
+
+-- Политики доступа для reviews
+CREATE POLICY "Allow public read access to reviews" 
+ON public.reviews FOR SELECT 
+USING (true);
+
+CREATE POLICY "Allow public insert access to reviews" 
+ON public.reviews FOR INSERT 
+WITH CHECK (true);
+

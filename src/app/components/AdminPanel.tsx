@@ -44,6 +44,9 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
   }, []);
 
   // Form states
+  const [activeMode, setActiveMode] = useState<"product" | "review">("product");
+
+  // Product states
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState(CATEGORIES_LIST[0]);
@@ -54,6 +57,52 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
   const [selectedColors, setSelectedColors] = useState<string[]>(["ЧЕРНЫЙ"]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Review states
+  const [reviewAuthor, setReviewAuthor] = useState("");
+  const [reviewText, setReviewText] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewDate, setReviewDate] = useState("");
+  const [isReviewSaving, setIsReviewSaving] = useState(false);
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      toast.error("Supabase не настроен. Проверьте файл .env");
+      return;
+    }
+
+    if (!reviewAuthor.trim()) return toast.error("Введите имя автора");
+    if (!reviewText.trim()) return toast.error("Введите текст отзыва");
+
+    setIsReviewSaving(true);
+
+    try {
+      const dateStr = reviewDate.trim() || "сегодня";
+      const { error } = await supabase.from("reviews").insert([
+        {
+          author: reviewAuthor.trim().toUpperCase(),
+          text: reviewText.trim(),
+          rating: reviewRating,
+          date: dateStr.toUpperCase(),
+        },
+      ]);
+
+      if (error) throw error;
+
+      toast.success("Отзыв успешно добавлен!");
+      setReviewAuthor("");
+      setReviewText("");
+      setReviewRating(5);
+      setReviewDate("");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Ошибка добавления отзыва");
+    } finally {
+      setIsReviewSaving(false);
+    }
+  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,26 +261,70 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             <ArrowLeft strokeWidth={1} className="w-5 h-5" />
             <span>В КАТАЛОГ</span>
           </button>
-          <h1 className="text-lg tracking-[0.3em] font-light">ДОБАВИТЬ ТОВАР</h1>
+          <h1 className="text-lg tracking-[0.3em] font-light">
+            {activeMode === "product" ? "ДОБАВИТЬ ТОВАР" : "ДОБАВИТЬ ОТЗЫВ"}
+          </h1>
           <div className="w-24"></div> {/* Spacer to center title */}
         </header>
 
-        {/* Main Form */}
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          {/* Left Column: Image Upload & Preview */}
-          <div className="flex flex-col gap-6">
-            <h2 className="text-[10px] text-gray-400 tracking-[0.2em]">ИЗОБРАЖЕНИЕ</h2>
-            
-            <div className="border border-dashed border-gray-300 relative aspect-[3/4] bg-gray-50 flex flex-col justify-center items-center p-6 group transition-colors hover:border-black">
-              {imagePreview ? (
-                <>
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-full object-cover absolute inset-0"
-                  />
-                  <label className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm border border-black text-center py-2 text-[10px] tracking-[0.2em] cursor-pointer hover:bg-black hover:text-white transition-all">
-                    ИЗМЕНИТЬ ФОТО
+        {/* Mode Selector */}
+        <div className="flex gap-4 mb-8 border-b border-gray-100 pb-4">
+          <button
+            type="button"
+            onClick={() => setActiveMode("product")}
+            className={`text-[10px] tracking-[0.2em] font-extrabold pb-2 border-b-2 transition-colors cursor-pointer ${
+              activeMode === "product" ? "border-black text-black" : "border-transparent text-gray-400 hover:text-black"
+            }`}
+          >
+            ТОВАРЫ
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveMode("review")}
+            className={`text-[10px] tracking-[0.2em] font-extrabold pb-2 border-b-2 transition-colors cursor-pointer ${
+              activeMode === "review" ? "border-black text-black" : "border-transparent text-gray-400 hover:text-black"
+            }`}
+          >
+            ОТЗЫВЫ
+          </button>
+        </div>
+
+        {activeMode === "product" ? (
+          /* Main Form */
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            {/* Left Column: Image Upload & Preview */}
+            <div className="flex flex-col gap-6">
+              <h2 className="text-[10px] text-gray-400 tracking-[0.2em]">ИЗОБРАЖЕНИЕ</h2>
+              
+              <div className="border border-dashed border-gray-300 relative aspect-[3/4] bg-gray-50 flex flex-col justify-center items-center p-6 group transition-colors hover:border-black">
+                {imagePreview ? (
+                  <>
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-full object-cover absolute inset-0"
+                    />
+                    <label className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm border border-black text-center py-2 text-[10px] tracking-[0.2em] cursor-pointer hover:bg-black hover:text-white transition-all">
+                      ИЗМЕНИТЬ ФОТО
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <label className="flex flex-col items-center gap-4 cursor-pointer text-center">
+                    <Upload strokeWidth={1} className="w-8 h-8 text-gray-400 group-hover:text-black transition-colors" />
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] tracking-[0.1em] text-gray-500 group-hover:text-black transition-colors">
+                        ВЫБЕРИТЕ ФАЙЛ С ИЗОБРАЖЕНИЕМ
+                      </span>
+                      <span className="text-[8px] tracking-[0.1em] text-gray-400">
+                        PNG, JPG ИЛИ WEBP ДО 5MB
+                      </span>
+                    </div>
                     <input
                       type="file"
                       accept="image/*"
@@ -239,168 +332,229 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                       className="hidden"
                     />
                   </label>
-                </>
-              ) : (
-                <label className="flex flex-col items-center gap-4 cursor-pointer text-center">
-                  <Upload strokeWidth={1} className="w-8 h-8 text-gray-400 group-hover:text-black transition-colors" />
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] tracking-[0.1em] text-gray-500 group-hover:text-black transition-colors">
-                      ВЫБЕРИТЕ ФАЙЛ С ИЗОБРАЖЕНИЕМ
-                    </span>
-                    <span className="text-[8px] tracking-[0.1em] text-gray-400">
-                      PNG, JPG ИЛИ WEBP ДО 5MB
-                    </span>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
-          </div>
-
-          {/* Right Column: Fields */}
-          <div className="flex flex-col gap-8">
-            {/* Title */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] text-gray-400 tracking-[0.2em]">НАЗВАНИЕ ТОВАРА</label>
-              <input
-                type="text"
-                placeholder="НАПРИМЕР: ARCHIVE JACKET 01"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black placeholder:text-gray-300"
-              />
-            </div>
-
-            {/* Brand */}
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] text-gray-400 tracking-[0.2em]">БРЕНД</label>
-              <input
-                type="text"
-                placeholder="НАПРИМЕР: UNDERBUY, RICK OWENS"
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black placeholder:text-gray-300"
-              />
-            </div>
-
-            {/* Category and Price */}
-            <div className="grid grid-cols-2 gap-6">
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] text-gray-400 tracking-[0.2em]">КАТЕГОРИЯ</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] bg-transparent focus:outline-none focus:border-black rounded-none cursor-pointer"
-                >
-                  {CATEGORIES_LIST.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
+                )}
               </div>
+            </div>
 
+            {/* Right Column: Fields */}
+            <div className="flex flex-col gap-8">
+              {/* Title */}
               <div className="flex flex-col gap-2">
-                <label className="text-[10px] text-gray-400 tracking-[0.2em]">ЦЕНА</label>
+                <label className="text-[10px] text-gray-400 tracking-[0.2em]">НАЗВАНИЕ ТОВАРА</label>
                 <input
                   type="text"
-                  placeholder="1200"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black"
+                  placeholder="НАПРИМЕР: ARCHIVE JACKET 01"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black placeholder:text-gray-300"
                 />
               </div>
+
+              {/* Brand */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] text-gray-400 tracking-[0.2em]">БРЕНД</label>
+                <input
+                  type="text"
+                  placeholder="НАПРИМЕР: UNDERBUY, RICK OWENS"
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black placeholder:text-gray-300"
+                />
+              </div>
+
+              {/* Category and Price */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] text-gray-400 tracking-[0.2em]">КАТЕГОРИЯ</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] bg-transparent focus:outline-none focus:border-black rounded-none cursor-pointer"
+                  >
+                    {CATEGORIES_LIST.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] text-gray-400 tracking-[0.2em]">ЦЕНА</label>
+                  <input
+                    type="text"
+                    placeholder="1200"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black"
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] text-gray-400 tracking-[0.2em]">ОПИСАНИЕ</label>
+                <textarea
+                  placeholder="КОНСТРУКЦИЯ ИЗ ПЛОТНОГО ХЛОПКА..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black resize-none placeholder:text-gray-300 normal-case"
+                />
+              </div>
+
+              {/* Sizes */}
+              <div className="flex flex-col gap-3">
+                <label className="text-[10px] text-gray-400 tracking-[0.2em]">РАЗМЕРЫ В НАЛИЧИИ</label>
+                <div className="flex flex-wrap gap-2">
+                  {SIZES_LIST.map((size) => {
+                    const active = selectedSizes.includes(size);
+                    return (
+                      <button
+                        type="button"
+                        key={size}
+                        onClick={() => toggleSize(size)}
+                        className={`border px-3 py-2 text-[10px] tracking-[0.1em] transition-colors cursor-pointer ${
+                          active
+                            ? "border-black bg-black text-white"
+                            : "border-gray-200 text-gray-400 hover:border-black hover:text-black"
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Colors */}
+              <div className="flex flex-col gap-3">
+                <label className="text-[10px] text-gray-400 tracking-[0.2em]">ЦВЕТА В НАЛИЧИИ</label>
+                <div className="flex flex-wrap gap-2">
+                  {COLORS_LIST.map((color) => {
+                    const active = selectedColors.includes(color);
+                    return (
+                      <button
+                        type="button"
+                        key={color}
+                        onClick={() => toggleColor(color)}
+                        className={`border px-3 py-2 text-[10px] tracking-[0.1em] transition-colors cursor-pointer ${
+                          active
+                            ? "border-black bg-black text-white"
+                            : "border-gray-200 text-gray-400 hover:border-black hover:text-black"
+                        }`}
+                      >
+                        {color}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Is New Tag */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="isNew"
+                  checked={isNew}
+                  onChange={(e) => setIsNew(e.target.checked)}
+                  className="w-4 h-4 border border-black checked:bg-black rounded-none cursor-pointer focus:ring-0"
+                />
+                <label
+                  htmlFor="isNew"
+                  className="text-[10px] tracking-[0.2em] cursor-pointer select-none"
+                >
+                  ОТМЕТИТЬ КАК НОВИНКУ (NEW)
+                </label>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-black text-white py-4 text-xs tracking-[0.2em] hover:bg-gray-800 transition-colors flex items-center justify-center gap-3 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed group cursor-pointer"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>СОХРАНЕНИЕ...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>ОПУБЛИКОВАТЬ ТОВАР</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* Review Form */
+          <form onSubmit={handleReviewSubmit} className="max-w-md mx-auto flex flex-col gap-8">
+            {/* Author */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] text-gray-400 tracking-[0.2em]">АВТОР ОТЗЫВА</label>
+              <input
+                type="text"
+                placeholder="НАПРИМЕР: АРСЕНИЙ"
+                value={reviewAuthor}
+                onChange={(e) => setReviewAuthor(e.target.value)}
+                className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black placeholder:text-gray-300"
+              />
             </div>
 
-            {/* Description */}
+            {/* Date */}
             <div className="flex flex-col gap-2">
-              <label className="text-[10px] text-gray-400 tracking-[0.2em]">ОПИСАНИЕ</label>
+              <label className="text-[10px] text-gray-400 tracking-[0.2em]">ДАТА ОТЗЫВА (ОПЦИОНАЛЬНО)</label>
+              <input
+                type="text"
+                placeholder="НАПРИМЕР: 2 ДНЯ НАЗАД ИЛИ СЕГОДНЯ"
+                value={reviewDate}
+                onChange={(e) => setReviewDate(e.target.value)}
+                className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black placeholder:text-gray-300"
+              />
+            </div>
+
+            {/* Rating selector (1-5) */}
+            <div className="flex flex-col gap-3">
+              <label className="text-[10px] text-gray-400 tracking-[0.2em]">ОЦЕНКА</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    type="button"
+                    key={`star-${star}`}
+                    onClick={() => setReviewRating(star)}
+                    className={`border px-3 py-2 text-[10px] tracking-[0.1em] transition-colors cursor-pointer ${
+                      reviewRating >= star
+                        ? "border-black bg-black text-white"
+                        : "border-gray-200 text-gray-400 hover:border-black hover:text-black"
+                    }`}
+                  >
+                    ★ {star}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Text */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] text-gray-400 tracking-[0.2em]">ТЕКСТ ОТЗЫВА</label>
               <textarea
-                placeholder="КОНСТРУКЦИЯ ИЗ ПЛОТНОГО ХЛОПКА..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
+                placeholder="ПЕДАЛИ АХУЕННО ПОДОШЛИ, БОТ БОМБОВЫЙ..."
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+                rows={4}
                 className="border-b border-gray-200 py-2 text-xs tracking-[0.1em] focus:outline-none focus:border-black resize-none placeholder:text-gray-300 normal-case"
               />
-            </div>
-
-            {/* Sizes */}
-            <div className="flex flex-col gap-3">
-              <label className="text-[10px] text-gray-400 tracking-[0.2em]">РАЗМЕРЫ В НАЛИЧИИ</label>
-              <div className="flex flex-wrap gap-2">
-                {SIZES_LIST.map((size) => {
-                  const active = selectedSizes.includes(size);
-                  return (
-                    <button
-                      type="button"
-                      key={size}
-                      onClick={() => toggleSize(size)}
-                      className={`border px-3 py-2 text-[10px] tracking-[0.1em] transition-colors cursor-pointer ${
-                        active
-                          ? "border-black bg-black text-white"
-                          : "border-gray-200 text-gray-400 hover:border-black hover:text-black"
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Colors */}
-            <div className="flex flex-col gap-3">
-              <label className="text-[10px] text-gray-400 tracking-[0.2em]">ЦВЕТА В НАЛИЧИИ</label>
-              <div className="flex flex-wrap gap-2">
-                {COLORS_LIST.map((color) => {
-                  const active = selectedColors.includes(color);
-                  return (
-                    <button
-                      type="button"
-                      key={color}
-                      onClick={() => toggleColor(color)}
-                      className={`border px-3 py-2 text-[10px] tracking-[0.1em] transition-colors cursor-pointer ${
-                        active
-                          ? "border-black bg-black text-white"
-                          : "border-gray-200 text-gray-400 hover:border-black hover:text-black"
-                      }`}
-                    >
-                      {color}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Is New Tag */}
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="isNew"
-                checked={isNew}
-                onChange={(e) => setIsNew(e.target.checked)}
-                className="w-4 h-4 border border-black checked:bg-black rounded-none cursor-pointer focus:ring-0"
-              />
-              <label
-                htmlFor="isNew"
-                className="text-[10px] tracking-[0.2em] cursor-pointer select-none"
-              >
-                ОТМЕТИТЬ КАК НОВИНКУ (NEW)
-              </label>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isReviewSaving}
               className="w-full bg-black text-white py-4 text-xs tracking-[0.2em] hover:bg-gray-800 transition-colors flex items-center justify-center gap-3 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed group cursor-pointer"
             >
-              {isLoading ? (
+              {isReviewSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>СОХРАНЕНИЕ...</span>
@@ -408,12 +562,12 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  <span>ОПУБЛИКОВАТЬ ТОВАР</span>
+                  <span>ОПУБЛИКОВАТЬ ОТЗЫВ</span>
                 </>
               )}
             </button>
-          </div>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   );

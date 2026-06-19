@@ -97,8 +97,44 @@ const PRODUCTS_MOCK = [
     aspect: "aspect-[4/5]",
     span: "col-span-2 md:col-span-2",
     description: "Стул из холоднокатаного алюминия. Создан, чтобы существовать исключительно как молчаливый объект в пространстве. Тяжелый и бескомпромиссный.",
-    sizes: ["OS"],
-    colors: ["СЕРЫЙ", "ЧЕРНЫЙ"]
+  }
+];
+
+const REVIEWS_MOCK = [
+  {
+    id: "r1",
+    author: "Арсений",
+    date: "2 нед. назад",
+    rating: 5,
+    text: "педали ахуенно подошли, бот бомбовый, доставка быстрая, за совет дяде лёше отдельный респект 🫶🫶🫶"
+  },
+  {
+    id: "r2",
+    author: "Владислав",
+    date: "1 нед. назад",
+    rating: 5,
+    text: "куртка просто космос, качество вышка, доехала за 6 дней! продавцу респект за помощь с размером"
+  },
+  {
+    id: "r3",
+    author: "Кирилл",
+    date: "3 дня назад",
+    rating: 5,
+    text: "все супер, доставка быстрая, шмот оригинальный, буду заказывать еще"
+  },
+  {
+    id: "r4",
+    author: "Артем",
+    date: "2 дня назад",
+    rating: 5,
+    text: "заказал жилетку баленсиага, все проверили на оригинальность перед отправкой, очень доволен!"
+  },
+  {
+    id: "r5",
+    author: "Дмитрий",
+    date: "5 дней назад",
+    rating: 5,
+    text: "доставка пушка, упаковано отлично. менеджер ответил на все тупые вопросы за 5 минут, респект!"
   }
 ];
 
@@ -260,6 +296,10 @@ export default function App() {
   const [isTelegramAdmin, setIsTelegramAdmin] = useState(false);
   const [tgUser, setTgUser] = useState<any>(null);
 
+  // Reviews states
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [isReviewsLoading, setIsReviewsLoading] = useState(true);
+
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (tg) {
@@ -327,6 +367,52 @@ export default function App() {
       }
     }
     loadProducts();
+  }, []);
+
+  // Load reviews from Supabase
+  useEffect(() => {
+    async function loadReviews() {
+      const isPlaceholder = 
+        !import.meta.env.VITE_SUPABASE_URL || 
+        import.meta.env.VITE_SUPABASE_URL.includes("placeholder") ||
+        !import.meta.env.VITE_SUPABASE_ANON_KEY ||
+        import.meta.env.VITE_SUPABASE_ANON_KEY === "placeholder";
+
+      if (isPlaceholder) {
+        setReviews(REVIEWS_MOCK);
+        setIsReviewsLoading(false);
+        return;
+      }
+
+      setIsReviewsLoading(true);
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Supabase timeout")), 2500)
+      );
+
+      try {
+        const fetchPromise = supabase
+          .from("reviews")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        const result: any = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (result.error) throw result.error;
+
+        if (result.data && result.data.length > 0) {
+          setReviews([...result.data, ...REVIEWS_MOCK]);
+        } else {
+          setReviews(REVIEWS_MOCK);
+        }
+      } catch (err) {
+        console.warn("Using mock reviews (failed loading from Supabase / timeout):", err);
+        setReviews(REVIEWS_MOCK);
+      } finally {
+        setIsReviewsLoading(false);
+      }
+    }
+    loadReviews();
   }, []);
 
   // Save cart to local storage
@@ -559,10 +645,7 @@ export default function App() {
           <div className="flex flex-col gap-16 animate-in fade-in duration-300">
             {/* Landing Hero */}
             <div className="flex flex-col items-center justify-center text-center py-12 md:py-20 border-b border-gray-100">
-              <h1 className="text-3xl md:text-5xl font-black tracking-[0.2em] mb-4">UNDERBUY</h1>
-              <p className="text-[10px] md:text-xs tracking-[0.3em] text-gray-400 font-extrabold uppercase max-w-md leading-relaxed">
-                Высокотехнологичный каталог одежды с быстрой доставкой
-              </p>
+              <h1 className="text-3xl md:text-5xl font-black tracking-[0.2em]">UNDERBUY</h1>
             </div>
 
             {/* 1. КАК ОФОРМИТЬ ЗАКАЗ */}
@@ -607,36 +690,20 @@ export default function App() {
                 <div className="flex items-center gap-1.5 select-none">
                   <span className="text-xs">★</span>
                   <span className="text-[10px] tracking-[0.1em] font-extrabold">5.0</span>
-                  <span className="text-[10px] tracking-[0.1em] text-gray-400 font-extrabold ml-1 uppercase">37 ОТЗЫВОВ</span>
+                  <span className="text-[10px] tracking-[0.1em] text-gray-400 font-extrabold ml-1 uppercase">{reviews.length} ОТЗЫВОВ</span>
                 </div>
               </div>
               
               <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-none">
-                <ReviewCard 
-                  author="Арсений" 
-                  date="2 нед. назад" 
-                  text="педали ахуенно подошли, бот бомбовый, доставка быстрая, за совет дяде лёше отдельный респект 🫶🫶🫶" 
-                />
-                <ReviewCard 
-                  author="Владислав" 
-                  date="1 нед. назад" 
-                  text="куртка просто космос, качество вышка, доехала за 6 дней! продавцу респект за помощь с размером" 
-                />
-                <ReviewCard 
-                  author="Кирилл" 
-                  date="3 дня назад" 
-                  text="все супер, доставка быстрая, шмот оригинальный, буду заказывать еще" 
-                />
-                <ReviewCard 
-                  author="Артем" 
-                  date="2 дня назад" 
-                  text="заказал жилетку баленсиага, все проверили на оригинальность перед отправкой, очень доволен!" 
-                />
-                <ReviewCard 
-                  author="Дмитрий" 
-                  date="5 дней назад" 
-                  text="доставка пушка, упаковано отлично. менеджер ответил на все тупые вопросы за 5 минут, респект!" 
-                />
+                {reviews.map((rev) => (
+                  <ReviewCard 
+                    key={rev.id || `${rev.author}-${rev.created_at}`}
+                    author={rev.author} 
+                    date={rev.date} 
+                    rating={rev.rating}
+                    text={rev.text} 
+                  />
+                ))}
               </div>
             </div>
 
@@ -815,16 +882,18 @@ export default function App() {
               </div>
             </div>
 
-            <div className="w-full mt-12 pt-6 border-t border-gray-100 flex flex-col gap-4">
-              <button
-                onClick={() => {
-                  setIsAdminOpen(true);
-                }}
-                className="w-full border border-black py-3 text-[10px] tracking-[0.2em] text-center hover:bg-black hover:text-white transition-colors cursor-pointer"
-              >
-                {isTelegramAdmin ? "ПАНЕЛЬ АДМИНИСТРАТОРА" : "ВХОД ДЛЯ ПЕРСОНАЛА"}
-              </button>
-            </div>
+            {isTelegramAdmin && (
+              <div className="w-full mt-12 pt-6 border-t border-gray-100 flex flex-col gap-4">
+                <button
+                  onClick={() => {
+                    setIsAdminOpen(true);
+                  }}
+                  className="w-full border border-black py-3 text-[10px] tracking-[0.2em] text-center hover:bg-black hover:text-white transition-colors cursor-pointer"
+                >
+                  ПАНЕЛЬ АДМИНИСТРАТОРА
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>
