@@ -167,12 +167,17 @@ const CATEGORY_WORDS = [
   "HOODIE", "ZIP", "ZIPUP", "ZIP-UP", "ЗИПКА", "ХУДИ", "JACKET", "ЖАКЕТ", "COAT", "ПАЛЬТО", 
   "PANTS", "ШТАНЫ", "JEANS", "ДЖИНСЫ", "TSHIRT", "T-SHIRT", "ФУТБОЛКА", "SWEATSHIRT", "СВИТШОТ", 
   "LONGSLEEVE", "ЛОНГСЛИВ", "BAG", "СУМКА", "BELT", "РЕМЕНЬ", "HAT", "CAP", "КЕПКА", "ШАПКА", 
-  "SNEAKERS", "КРОССОВКИ", "SHOES", "ОБУВЬ", "TEE", "SHIRT"
+  "SNEAKERS", "КРОССОВКИ", "SHOES", "ОБУВЬ", "TEE", "SHIRT", "BOMBER", "БОМБЕР", "PUFFER", 
+  "ПУХОВИК", "SWEATER", "СВИТЕР", "VEST", "ЖИЛЕТ", "ЖИЛЕТКА", "CARDIGAN", "КАРДИГАН", 
+  "PULLOVER", "ПУЛОВЕР", "POLO", "ПОЛО", "BOOTS", "БОТИНКИ", "SLIDES", "СЛАЙДЫ", "SANDALS", "САНДАЛИИ"
 ];
 
 export function cleanBrandName(rawBrand: string | null | undefined): string {
-  if (!rawBrand) return "";
-  const upper = rawBrand.trim().toUpperCase();
+  if (!rawBrand) return "НЕИЗВЕСТНО";
+  let upper = rawBrand.trim().toUpperCase();
+  
+  // Clean punctuation at boundaries but keep spaces
+  upper = upper.replace(/^[^A-ZА-Я0-9]+|[^A-ZА-Я0-9]+$/g, "");
   
   // 1. Check known brands first
   for (const item of KNOWN_BRANDS) {
@@ -183,11 +188,19 @@ export function cleanBrandName(rawBrand: string | null | undefined): string {
     }
   }
   
-  // 2. Otherwise clean category words from the end of the brand string
+  // 2. Otherwise clean category words from the brand string
   let words = upper.split(/\s+/);
-  words = words.filter(word => !CATEGORY_WORDS.includes(word));
+  words = words.filter(word => {
+    // Strip non-alphanumeric characters for comparison
+    const cleanWord = word.replace(/[^A-ZА-Я0-9]/g, "");
+    return !CATEGORY_WORDS.includes(cleanWord) && !CATEGORY_WORDS.includes(word);
+  });
   
-  return words.join(" ").trim() || upper;
+  // Re-join and trim
+  const result = words.join(" ").trim();
+  
+  // Fallback to original upper case if everything was stripped
+  return result || upper;
 }
 
 function CustomSelect({ 
@@ -594,23 +607,25 @@ export default function App() {
 
   // Filter products based on selected category, brand, and search query
   const filteredProducts = products.filter((product) => {
+    if (!product) return false;
+
     // Category filter
     if (activeCategory !== "ВСЕ") {
-      if (product.category !== activeCategory) return false;
+      if (!product.category || product.category !== activeCategory) return false;
     }
     
     // Brand filter
     if (activeBrand && activeBrand !== "ВСЕ") {
-      if (product.brand !== activeBrand) return false;
+      if (!product.brand || product.brand !== activeBrand) return false;
     }
 
     // Search query filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      const matchesName = product.name.toLowerCase().includes(query);
-      const matchesBrand = product.brand && product.brand.toLowerCase().includes(query);
-      const matchesCategory = product.category.toLowerCase().includes(query);
-      const matchesDesc = product.description && product.description.toLowerCase().includes(query);
+      const matchesName = product.name ? product.name.toLowerCase().includes(query) : false;
+      const matchesBrand = product.brand ? product.brand.toLowerCase().includes(query) : false;
+      const matchesCategory = product.category ? product.category.toLowerCase().includes(query) : false;
+      const matchesDesc = product.description ? product.description.toLowerCase().includes(query) : false;
       if (!matchesName && !matchesBrand && !matchesCategory && !matchesDesc) return false;
     }
 
