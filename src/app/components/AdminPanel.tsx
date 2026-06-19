@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, Upload, Loader2, Check, Lock } from "lucide-react";
 import { supabase } from "../utils/supabase";
 import { toast } from "sonner";
@@ -30,6 +30,18 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check if user is recognized as Telegram admin
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      const user = tg.initDataUnsafe?.user;
+      const adminId = import.meta.env.VITE_ADMIN_TELEGRAM_ID;
+      if (user && adminId && String(user.id) === String(adminId)) {
+        setIsAuthenticated(true);
+      }
+    }
+  }, []);
 
   // Form states
   const [name, setName] = useState("");

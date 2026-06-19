@@ -12,7 +12,8 @@ import {
   ArrowRight, 
   ShoppingBag, 
   Loader2,
-  ChevronDown
+  ChevronDown,
+  LayoutGrid
 } from "lucide-react";
 import { supabase } from "./utils/supabase";
 import CartDrawer, { CartItem, formatBYN, formatRUB, PriceDisplay } from "./components/ui/CartDrawer";
@@ -251,7 +252,28 @@ export default function App() {
   // Cart and Modals State
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Tab routing: "home" | "catalog" | "profile"
+  const [activeTab, setActiveTab] = useState<"home" | "catalog" | "profile">("home");
+
+  // Telegram WebApp states
+  const [isTelegramAdmin, setIsTelegramAdmin] = useState(false);
+  const [tgUser, setTgUser] = useState<any>(null);
+
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      const user = tg.initDataUnsafe?.user;
+      if (user) {
+        setTgUser(user);
+        const adminId = import.meta.env.VITE_ADMIN_TELEGRAM_ID;
+        if (adminId && String(user.id) === String(adminId)) {
+          setIsTelegramAdmin(true);
+        }
+      }
+    }
+  }, []);
   
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem("underbuy_cart");
@@ -312,14 +334,14 @@ export default function App() {
     localStorage.setItem("underbuy_cart", JSON.stringify(cartItems));
   }, [cartItems]);
 
-  // Lock body scroll when PDP or Admin/Profile panels are open
+  // Lock body scroll when PDP or Admin panels are open
   useEffect(() => {
-    if (selectedProduct || isAdminOpen || isProfileOpen || isCartOpen) {
+    if (selectedProduct || isAdminOpen || isCartOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "auto";
     }
-  }, [selectedProduct, isAdminOpen, isProfileOpen, isCartOpen]);
+  }, [selectedProduct, isAdminOpen, isCartOpen]);
 
   // Set default size and color when product is selected in PDP
   useEffect(() => {
@@ -473,8 +495,8 @@ export default function App() {
         ) : (
           <>
             <h1 className="text-[22px] md:text-[26px] tracking-[0.05em] font-black cursor-pointer select-none leading-none" onClick={() => {
+              setActiveTab("home");
               setActiveCategory("ВСЕ");
-              setIsProfileOpen(false);
               setIsAdminOpen(false);
             }}>
               UNDERBUY
@@ -492,151 +514,57 @@ export default function App() {
                   </span>
                 )}
               </button>
-              <button 
-                onClick={() => setIsSearchOpen(true)}
-                className="p-2 -mr-2 group cursor-pointer"
-              >
-                <Search strokeWidth={1} className="w-5 h-5 md:w-6 md:h-6 group-hover:opacity-50 transition-opacity" />
-              </button>
+              {activeTab === "catalog" && (
+                <button 
+                  onClick={() => setIsSearchOpen(true)}
+                  className="p-2 -mr-2 group cursor-pointer"
+                >
+                  <Search strokeWidth={1} className="w-5 h-5 md:w-6 md:h-6 group-hover:opacity-50 transition-opacity" />
+                </button>
+              )}
             </div>
           </>
         )}
       </header>
 
       {/* Categories & Filter Bar (Two Custom Minimalist Dropdowns) */}
-      <div className="sticky top-[65px] md:top-[73px] z-30 bg-white border-b border-gray-200 shadow-sm p-4 flex gap-4 w-full box-border">
-        <CustomSelect 
-          label="КАТЕГОРИЯ" 
-          value={activeCategory} 
-          options={CATEGORIES} 
-          onChange={(val) => {
-            setActiveCategory(val);
-            setIsProfileOpen(false);
-            setIsAdminOpen(false);
-          }} 
-        />
-        <CustomSelect 
-          label="БРЕНД" 
-          value={activeBrand || "ВСЕ БРЕНДЫ"} 
-          options={["ВСЕ БРЕНДЫ", ...(Array.from(new Set(products.map(p => p.brand).filter(Boolean))) as string[])]} 
-          onChange={(val) => {
-            setActiveBrand(val === "ВСЕ БРЕНДЫ" ? null : val);
-            setIsProfileOpen(false);
-            setIsAdminOpen(false);
-          }} 
-        />
-      </div>
+      {activeTab === "catalog" && (
+        <div className="sticky top-[65px] md:top-[73px] z-30 bg-white border-b border-gray-200 shadow-sm p-4 flex gap-4 w-full box-border">
+          <CustomSelect 
+            label="КАТЕГОРИЯ" 
+            value={activeCategory} 
+            options={CATEGORIES} 
+            onChange={(val) => {
+              setActiveCategory(val);
+              setIsAdminOpen(false);
+            }} 
+          />
+          <CustomSelect 
+            label="БРЕНД" 
+            value={activeBrand || "ВСЕ БРЕНДЫ"} 
+            options={["ВСЕ БРЕНДЫ", ...(Array.from(new Set(products.map(p => p.brand).filter(Boolean))) as string[])]} 
+            onChange={(val) => {
+              setActiveBrand(val === "ВСЕ БРЕНДЫ" ? null : val);
+              setIsAdminOpen(false);
+            }} 
+          />
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="pb-32 px-4 md:px-8 pt-6 overflow-x-hidden selection:bg-black selection:text-white">
         
-        {/* Loading Indicator (Skeleton Screen with Shimmer) */}
-        {isProductsLoading && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 md:gap-x-8 gap-y-16">
-            {/* Skeleton Card 1 */}
-            <div className="col-span-2 md:col-span-2 flex flex-col gap-3">
-              <div className="w-full aspect-[4/5] md:aspect-[3/4] shimmer-effect" />
-              <div className="flex justify-between items-start mt-2">
-                <div className="flex flex-col gap-2 w-full">
-                  <div className="h-3.5 w-2/3 shimmer-effect" />
-                  <div className="h-3 w-1/3 shimmer-effect" />
-                </div>
-                <div className="h-3.5 w-12 shimmer-effect shrink-0 ml-4" />
-              </div>
-            </div>
-            
-            {/* Skeleton Card 2 */}
-            <div className="col-span-1 md:col-span-1 md:mt-32 flex flex-col gap-3">
-              <div className="w-full aspect-[3/4] shimmer-effect" />
-              <div className="flex justify-between items-start mt-2">
-                <div className="flex flex-col gap-2 w-full">
-                  <div className="h-3.5 w-2/3 shimmer-effect" />
-                  <div className="h-3 w-1/3 shimmer-effect" />
-                </div>
-                <div className="h-3.5 w-12 shimmer-effect shrink-0 ml-4" />
-              </div>
+        {/* TAB 1: HOME */}
+        {activeTab === "home" && (
+          <div className="flex flex-col gap-16 animate-in fade-in duration-300">
+            {/* Landing Hero */}
+            <div className="flex flex-col items-center justify-center text-center py-12 md:py-20 border-b border-gray-100">
+              <h1 className="text-3xl md:text-5xl font-black tracking-[0.2em] mb-4">UNDERBUY</h1>
+              <p className="text-[10px] md:text-xs tracking-[0.3em] text-gray-400 font-extrabold uppercase max-w-md leading-relaxed">
+                Высокотехнологичный каталог одежды с быстрой доставкой
+              </p>
             </div>
 
-            {/* Skeleton Card 3 */}
-            <div className="col-span-1 md:col-span-1 flex flex-col gap-3">
-              <div className="w-full aspect-[3/4] shimmer-effect" />
-              <div className="flex justify-between items-start mt-2">
-                <div className="flex flex-col gap-2 w-full">
-                  <div className="h-3.5 w-2/3 shimmer-effect" />
-                  <div className="h-3 w-1/3 shimmer-effect" />
-                </div>
-                <div className="h-3.5 w-12 shimmer-effect shrink-0 ml-4" />
-              </div>
-            </div>
-
-            {/* Skeleton Card 4 */}
-            <div className="col-span-2 md:col-span-2 flex flex-col gap-3">
-              <div className="w-full aspect-square md:aspect-[16/9] shimmer-effect" />
-              <div className="flex justify-between items-start mt-2">
-                <div className="flex flex-col gap-2 w-full">
-                  <div className="h-3.5 w-2/3 shimmer-effect" />
-                  <div className="h-3 w-1/3 shimmer-effect" />
-                </div>
-                <div className="h-3.5 w-12 shimmer-effect shrink-0 ml-4" />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!isProductsLoading && (
-          <>
-            {/* Grid */}
-            {filteredProducts.length === 0 ? (
-              <div className="text-center py-24 text-[10px] tracking-[0.2em] text-gray-400 font-extrabold">
-                ПО ВАШЕМУ ЗАПРОСУ НИЧЕГО НЕ НАЙДЕНО
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 md:gap-x-8 gap-y-16">
-                {filteredProducts.map((product) => {
-                  const productImg = product.image_url || product.img;
-                  const aspectClass = product.aspect || "aspect-[3/4]";
-                  const spanClass = product.span || "col-span-1 md:col-span-1";
-
-                  return (
-                    <div 
-                      key={product.id}
-                      onClick={() => setSelectedProduct(product)}
-                      className={`${spanClass} group cursor-pointer flex flex-col gap-3`}
-                    >
-                      <div className={`relative overflow-hidden w-full ${aspectClass} bg-gray-100`}>
-                        <img 
-                          src={productImg} 
-                          alt={product.name} 
-                          className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${product.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
-                        />
-                        {product.is_new && (
-                          <div className="absolute top-4 left-4 bg-black text-white px-2 py-1 text-[8px] tracking-[0.2em] font-extrabold">
-                            NEW
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex justify-between items-start mt-2">
-                        <div className="flex flex-col gap-1">
-                          {product.brand && (
-                            <span className="text-[9px] tracking-[0.2em] text-gray-400 font-extrabold">{product.brand}</span>
-                          )}
-                          <h2 className="text-[11px] md:text-xs tracking-[0.1em] font-bold">{product.name}</h2>
-                          <p className="text-[10px] tracking-[0.1em] text-gray-500 font-bold">{product.category}</p>
-                        </div>
-                        <PriceDisplay price={product.price} size="md" align="end" />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Как заказать, Отзывы и FAQ (показываем всегда внизу главной страницы) */}
-        {!isProfileOpen && !isAdminOpen && !selectedProduct && (
-          <div className="flex flex-col gap-16 mt-24 border-t border-black pt-16">
-            
             {/* 1. КАК ОФОРМИТЬ ЗАКАЗ */}
             <div className="flex flex-col gap-6">
               <h2 className="text-sm tracking-[0.2em] font-extrabold uppercase">КАК СДЕЛАТЬ ЗАКАЗ</h2>
@@ -750,7 +678,153 @@ export default function App() {
                 />
               </div>
             </div>
+          </div>
+        )}
 
+        {/* TAB 2: CATALOG */}
+        {activeTab === "catalog" && (
+          <div className="animate-in fade-in duration-300">
+            {/* Loading Indicator (Skeleton Screen with Shimmer) */}
+            {isProductsLoading && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 md:gap-x-8 gap-y-16">
+                <div className="col-span-2 md:col-span-2 flex flex-col gap-3">
+                  <div className="w-full aspect-[4/5] md:aspect-[3/4] shimmer-effect" />
+                  <div className="flex justify-between items-start mt-2">
+                    <div className="flex flex-col gap-2 w-full">
+                      <div className="h-3.5 w-2/3 shimmer-effect" />
+                      <div className="h-3 w-1/3 shimmer-effect" />
+                    </div>
+                    <div className="h-3.5 w-12 shimmer-effect shrink-0 ml-4" />
+                  </div>
+                </div>
+                
+                <div className="col-span-1 md:col-span-1 md:mt-32 flex flex-col gap-3">
+                  <div className="w-full aspect-[3/4] shimmer-effect" />
+                  <div className="flex justify-between items-start mt-2">
+                    <div className="flex flex-col gap-2 w-full">
+                      <div className="h-3.5 w-2/3 shimmer-effect" />
+                      <div className="h-3 w-1/3 shimmer-effect" />
+                    </div>
+                    <div className="h-3.5 w-12 shimmer-effect shrink-0 ml-4" />
+                  </div>
+                </div>
+
+                <div className="col-span-1 md:col-span-1 flex flex-col gap-3">
+                  <div className="w-full aspect-[3/4] shimmer-effect" />
+                  <div className="flex justify-between items-start mt-2">
+                    <div className="flex flex-col gap-2 w-full">
+                      <div className="h-3.5 w-2/3 shimmer-effect" />
+                      <div className="h-3 w-1/3 shimmer-effect" />
+                    </div>
+                    <div className="h-3.5 w-12 shimmer-effect shrink-0 ml-4" />
+                  </div>
+                </div>
+
+                <div className="col-span-2 md:col-span-2 flex flex-col gap-3">
+                  <div className="w-full aspect-square md:aspect-[16/9] shimmer-effect" />
+                  <div className="flex justify-between items-start mt-2">
+                    <div className="flex flex-col gap-2 w-full">
+                      <div className="h-3.5 w-2/3 shimmer-effect" />
+                      <div className="h-3 w-1/3 shimmer-effect" />
+                    </div>
+                    <div className="h-3.5 w-12 shimmer-effect shrink-0 ml-4" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!isProductsLoading && (
+              <>
+                {filteredProducts.length === 0 ? (
+                  <div className="text-center py-24 text-[10px] tracking-[0.2em] text-gray-400 font-extrabold">
+                    ПО ВАШЕМУ ЗАПРОСУ НИЧЕГО НЕ НАЙДЕНО
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 md:gap-x-8 gap-y-16">
+                    {filteredProducts.map((product) => {
+                      const productImg = product.image_url || product.img;
+                      const aspectClass = product.aspect || "aspect-[3/4]";
+                      const spanClass = product.span || "col-span-1 md:col-span-1";
+
+                      return (
+                        <div 
+                          key={product.id}
+                          onClick={() => setSelectedProduct(product)}
+                          className={`${spanClass} group cursor-pointer flex flex-col gap-3`}
+                        >
+                          <div className={`relative overflow-hidden w-full ${aspectClass} bg-gray-100`}>
+                            <img 
+                              src={productImg} 
+                              alt={product.name} 
+                              className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${product.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
+                            />
+                            {product.is_new && (
+                              <div className="absolute top-4 left-4 bg-black text-white px-2 py-1 text-[8px] tracking-[0.2em] font-extrabold">
+                                NEW
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex justify-between items-start mt-2">
+                            <div className="flex flex-col gap-1">
+                              {product.brand && (
+                                <span className="text-[9px] tracking-[0.2em] text-gray-400 font-extrabold">{product.brand}</span>
+                              )}
+                              <h2 className="text-[11px] md:text-xs tracking-[0.1em] font-bold">{product.name}</h2>
+                              <p className="text-[10px] tracking-[0.1em] text-gray-500 font-bold">{product.category}</p>
+                            </div>
+                            <PriceDisplay price={product.price} size="md" align="end" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: PROFILE */}
+        {activeTab === "profile" && (
+          <div className="max-w-md mx-auto w-full flex flex-col justify-between min-h-[50vh] pt-6 animate-in fade-in duration-300">
+            <div className="flex flex-col gap-8">
+              <div>
+                <p className="text-[10px] tracking-[0.2em] text-gray-400">ТИП АККАУНТА</p>
+                {isTelegramAdmin ? (
+                  <p className="text-sm tracking-[0.1em] font-extrabold mt-1 text-black uppercase">
+                    АДМИНИСТРАТОР (ВХОД БЕЗ ПАРОЛЯ)
+                  </p>
+                ) : (
+                  <p className="text-sm tracking-[0.1em] font-medium mt-1 uppercase">
+                    ГОСТЬ (КЛИЕНТ)
+                  </p>
+                )}
+                {tgUser && (
+                  <p className="text-[9px] tracking-[0.05em] text-gray-400 mt-1 normal-case font-bold">
+                    ВАШ TELEGRAM ID: <span className="font-extrabold text-black select-all">{tgUser.id}</span>
+                    {!isTelegramAdmin && " (добавьте его в .env как VITE_ADMIN_TELEGRAM_ID для входа без пароля)"}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-[10px] tracking-[0.2em] text-gray-400">ИСТОРИЯ ЗАКАЗОВ</p>
+                <p className="text-xs tracking-[0.1em] text-gray-500 normal-case mt-2">
+                  У вас пока нет оформленных заказов. Вся история ваших покупок будет отображаться здесь.
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full mt-12 pt-6 border-t border-gray-100 flex flex-col gap-4">
+              <button
+                onClick={() => {
+                  setIsAdminOpen(true);
+                }}
+                className="w-full border border-black py-3 text-[10px] tracking-[0.2em] text-center hover:bg-black hover:text-white transition-colors cursor-pointer"
+              >
+                {isTelegramAdmin ? "ПАНЕЛЬ АДМИНИСТРАТОРА" : "ВХОД ДЛЯ ПЕРСОНАЛА"}
+              </button>
+            </div>
           </div>
         )}
       </main>
@@ -865,45 +939,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Customer Profile overlay */}
-      {isProfileOpen && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto p-6 md:p-12 uppercase font-sans flex flex-col justify-between">
-          <div className="max-w-md mx-auto w-full">
-            <header className="flex justify-between items-center pb-6 border-b border-gray-200 mb-8">
-              <h2 className="text-sm tracking-[0.2em] font-medium">ПРОФИЛЬ</h2>
-              <button onClick={() => setIsProfileOpen(false)} className="p-1 hover:opacity-50 transition-opacity cursor-pointer">
-                <X strokeWidth={1} className="w-6 h-6" />
-              </button>
-            </header>
-
-            <div className="flex flex-col gap-8">
-              <div>
-                <p className="text-[10px] tracking-[0.2em] text-gray-400">ТИП АККАУНТА</p>
-                <p className="text-sm tracking-[0.1em] font-medium mt-1">ГОСТЬ (КЛИЕНТ)</p>
-              </div>
-
-              <div>
-                <p className="text-[10px] tracking-[0.2em] text-gray-400">ИСТОРИЯ ЗАКАЗОВ</p>
-                <p className="text-xs tracking-[0.1em] text-gray-500 normal-case mt-2">
-                  У вас пока нет оформленных заказов. Вся история ваших покупок будет отображаться здесь.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="max-w-md mx-auto w-full mt-12 pt-6 border-t border-gray-100 flex flex-col gap-4">
-            <button
-              onClick={() => {
-                setIsProfileOpen(false);
-                setIsAdminOpen(true);
-              }}
-              className="w-full border border-gray-300 py-3 text-[10px] tracking-[0.2em] text-center hover:border-black transition-colors cursor-pointer"
-            >
-              ВХОД ДЛЯ ПЕРСОНАЛА
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Profile is rendered inline as a tab */}
 
       {/* Cart Drawer Component */}
       <CartDrawer 
@@ -922,43 +958,60 @@ export default function App() {
 
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200 z-40">
-        <div className="flex justify-between items-center px-8 md:px-24 py-4 md:py-6 max-w-4xl mx-auto">
+        <div className="flex justify-between items-center px-4 md:px-24 py-4 md:py-6 max-w-4xl mx-auto">
           <button 
             onClick={() => {
-              setActiveCategory("ВСЕ");
-              setIsProfileOpen(false);
+              setActiveTab("home");
               setIsAdminOpen(false);
               setIsCartOpen(false);
             }} 
-            className="flex flex-col items-center gap-2 group w-16 cursor-pointer"
+            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
+              activeTab === "home" ? "text-black" : "text-gray-400 hover:text-black"
+            }`}
           >
-            <Home strokeWidth={1} className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-medium">ГЛАВНАЯ</span>
+            <Home strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
+            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">ГЛАВНАЯ</span>
+          </button>
+
+          <button 
+            onClick={() => {
+              setActiveTab("catalog");
+              setIsAdminOpen(false);
+              setIsCartOpen(false);
+            }} 
+            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
+              activeTab === "catalog" ? "text-black" : "text-gray-400 hover:text-black"
+            }`}
+          >
+            <LayoutGrid strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
+            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">КАТАЛОГ</span>
           </button>
           
           <button 
             onClick={() => setIsCartOpen(true)}
-            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer relative ${isCartPop ? "animate-cart-pop" : ""}`}
+            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer relative transition-colors text-gray-400 hover:text-black ${isCartPop ? "animate-cart-pop" : ""}`}
           >
-            <ShoppingBag strokeWidth={1} className="w-5 h-5 text-gray-400 group-hover:text-black group-hover:scale-110 transition-all" />
+            <ShoppingBag strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
             {totalCartCount > 0 && (
               <span className="absolute top-0 right-3 bg-black text-white text-[7px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
                 {totalCartCount}
               </span>
             )}
-            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-medium text-gray-400 group-hover:text-black transition-colors">КОРЗИНА</span>
+            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">КОРЗИНА</span>
           </button>
           
           <button 
             onClick={() => {
-              setIsProfileOpen(true);
+              setActiveTab("profile");
               setIsAdminOpen(false);
               setIsCartOpen(false);
             }}
-            className="flex flex-col items-center gap-2 group w-16 cursor-pointer"
+            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
+              activeTab === "profile" ? "text-black" : "text-gray-400 hover:text-black"
+            }`}
           >
-            <User strokeWidth={1} className="w-5 h-5 text-gray-400 group-hover:text-black group-hover:scale-110 transition-all" />
-            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-medium text-gray-400 group-hover:text-black transition-colors">ПРОФИЛЬ</span>
+            <User strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
+            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">ПРОФИЛЬ</span>
           </button>
         </div>
       </nav>
