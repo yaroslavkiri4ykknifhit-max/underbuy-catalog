@@ -165,6 +165,67 @@ function CustomSelect({
   );
 }
 
+function ReviewCard({ 
+  author, 
+  rating = 5, 
+  date, 
+  text 
+}: { 
+  author: string; 
+  rating?: number; 
+  date: string; 
+  text: string; 
+}) {
+  return (
+    <div className="snap-start shrink-0 w-[85vw] md:w-[320px] border border-black bg-white p-5 flex flex-col justify-between gap-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex justify-between items-center">
+          <div className="flex gap-0.5 text-black">
+            {Array.from({ length: rating }).map((_, i) => (
+              <span key={i} className="text-xs">★</span>
+            ))}
+          </div>
+          <span className="text-[9px] tracking-[0.1em] text-gray-400 font-extrabold uppercase">{date}</span>
+        </div>
+        <p className="text-[10px] tracking-[0.05em] leading-relaxed text-gray-700 normal-case font-medium">
+          {text}
+        </p>
+      </div>
+      <span className="text-[10px] tracking-[0.1em] font-extrabold uppercase">{author}</span>
+    </div>
+  );
+}
+
+function FaqItem({ 
+  question, 
+  answer 
+}: { 
+  question: string; 
+  answer: string; 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="border border-black bg-white select-none transition-all duration-300">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex justify-between items-center p-4 text-left cursor-pointer transition-colors hover:bg-gray-50"
+      >
+        <span className="text-[11px] tracking-[0.1em] font-black uppercase pr-4">{question}</span>
+        <ChevronDown 
+          strokeWidth={1.5} 
+          className={`w-4 h-4 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} 
+        />
+      </button>
+      <div className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-[500px] border-t border-black p-4" : "max-h-0"}`}>
+        <p className="text-[10px] tracking-[0.05em] text-gray-600 uppercase leading-relaxed font-bold">
+          {answer}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [products, setProducts] = useState<any[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
@@ -570,6 +631,127 @@ export default function App() {
               </div>
             )}
           </>
+        )}
+
+        {/* Как заказать, Отзывы и FAQ (показываем всегда внизу главной страницы) */}
+        {!isProfileOpen && !isAdminOpen && !selectedProduct && (
+          <div className="flex flex-col gap-16 mt-24 border-t border-black pt-16">
+            
+            {/* 1. КАК ОФОРМИТЬ ЗАКАЗ */}
+            <div className="flex flex-col gap-6">
+              <h2 className="text-sm tracking-[0.2em] font-extrabold uppercase">КАК СДЕЛАТЬ ЗАКАЗ</h2>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">1</div>
+                  <div>
+                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Выбор вещей</h3>
+                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Выберите нужные вещи в каталоге, настройте размер/цвет и добавьте их в корзину.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">2</div>
+                  <div>
+                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оформление</h3>
+                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Перейдите в корзину, заполните форму с контактами и подтвердите заказ.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">3</div>
+                  <div>
+                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Доставка</h3>
+                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Мы бережно упакуем ваш заказ и отправим его быстрой авиадоставкой.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">4</div>
+                  <div>
+                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Получение</h3>
+                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Получите уведомление от менеджера в Telegram и заберите свой заказ.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. ОТЗЫВЫ */}
+            <div className="flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-sm tracking-[0.2em] font-extrabold uppercase">ОТЗЫВЫ</h2>
+                <div className="flex items-center gap-1.5 select-none">
+                  <span className="text-xs">★</span>
+                  <span className="text-[10px] tracking-[0.1em] font-extrabold">5.0</span>
+                  <span className="text-[10px] tracking-[0.1em] text-gray-400 font-extrabold ml-1 uppercase">37 ОТЗЫВОВ</span>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-none">
+                <ReviewCard 
+                  author="Арсений" 
+                  date="2 нед. назад" 
+                  text="педали ахуенно подошли, бот бомбовый, доставка быстрая, за совет дяде лёше отдельный респект 🫶🫶🫶" 
+                />
+                <ReviewCard 
+                  author="Владислав" 
+                  date="1 нед. назад" 
+                  text="куртка просто космос, качество вышка, доехала за 6 дней! продавцу респект за помощь с размером" 
+                />
+                <ReviewCard 
+                  author="Кирилл" 
+                  date="3 дня назад" 
+                  text="все супер, доставка быстрая, шмот оригинальный, буду заказывать еще" 
+                />
+                <ReviewCard 
+                  author="Артем" 
+                  date="2 дня назад" 
+                  text="заказал жилетку баленсиага, все проверили на оригинальность перед отправкой, очень доволен!" 
+                />
+                <ReviewCard 
+                  author="Дмитрий" 
+                  date="5 дней назад" 
+                  text="доставка пушка, упаковано отлично. менеджер ответил на все тупые вопросы за 5 минут, респект!" 
+                />
+              </div>
+            </div>
+
+            {/* 3. ЧАСТЫЕ ВОПРОСЫ (FAQ) */}
+            <div className="flex flex-col gap-6">
+              <h2 className="text-sm tracking-[0.2em] font-extrabold uppercase">ЧАСТЫЕ ВОПРОСЫ</h2>
+              <div className="flex flex-col gap-4 max-w-2xl">
+                <FaqItem 
+                  question="Как оформить заказ?" 
+                  answer="Добавьте выбранные товары в корзину, заполните контактные данные (ФИО, телефон, Telegram, адрес доставки) и подтвердите заказ. Наш менеджер свяжется с вами в Telegram для завершения заказа." 
+                />
+                <FaqItem 
+                  question="Сколько стоит доставка?" 
+                  answer="Стоимость доставки рассчитывается индивидуально в зависимости от вашего города и веса посылки. Для большинства городов Беларуси и России действует фиксированная стоимость экспресс-доставки." 
+                />
+                <FaqItem 
+                  question="Как отследить заказ?" 
+                  answer="После отправки заказа менеджер предоставит вам трек-номер для отслеживания посылки в реальном времени." 
+                />
+                <FaqItem 
+                  question="Какие способы оплаты?" 
+                  answer="Мы принимаем переводы на карту, электронные платежи и оплату наличными при получении. Подробные реквизиты предоставит менеджер." 
+                />
+                <FaqItem 
+                  question="Через сколько я получу заказ?" 
+                  answer="Авиадоставка обычно занимает от 5 до 10 рабочих дней с момента подтверждения и отправки заказа." 
+                />
+                <FaqItem 
+                  question="Можно ли заказать, если товара нет на площадке?" 
+                  answer="Да! Вы можете прислать ссылку или фото любого товара нашему менеджеру в Telegram, и мы найдем, выкупим и доставим его для вас." 
+                />
+                <FaqItem 
+                  question="Когда нужно оплачивать заказ?" 
+                  answer="Оплата производится при оформлении заказа. Также вы можете воспользоваться опцией разделения платежа." 
+                />
+                <FaqItem 
+                  question="Что если нет всей суммы оплатить сразу, можно 50/50?" 
+                  answer="Да, конечно! У нас доступна оплата частями 50/50: половину стоимости вы оплачиваете при оформлении заказа для его запуска в работу и бронирования, а оставшиеся 50% — при получении товара в руки." 
+                />
+              </div>
+            </div>
+
+          </div>
         )}
       </main>
 
