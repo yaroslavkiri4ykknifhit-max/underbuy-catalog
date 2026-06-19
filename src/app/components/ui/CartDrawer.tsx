@@ -31,10 +31,14 @@ export const parsePrice = (priceStr: string) => {
 };
 
 // BYN = EUR * 3.5
-export const formatBYN = (amountOrStr: number | string) => {
+export const formatBYNNumber = (amountOrStr: number | string) => {
   const val = typeof amountOrStr === "string" ? parsePrice(amountOrStr) : amountOrStr;
   const bynAmount = Math.round(val * 3.5);
-  return bynAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " Br";
+  return bynAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+};
+
+export const formatBYN = (amountOrStr: number | string) => {
+  return formatBYNNumber(amountOrStr) + " Br";
 };
 
 // RUB = EUR * 100
@@ -48,6 +52,19 @@ export const formatRUB = (amountOrStr: number | string) => {
 export const formatPrice = (amount: number) => {
   return formatBYN(amount);
 };
+
+export function BynLogo() {
+  return (
+    <svg 
+      viewBox="3 3 18 18" 
+      className="inline-block w-[0.85em] h-[0.85em] fill-current align-text-bottom select-none ml-[0.1em]" 
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path fillRule="evenodd" clipRule="evenodd" d="M6 3h13v3H9v6h7.5c2.5 0 4.5 2 4.5 4.5S19 21 16.5 21H6V3zm3 11v4h7.5c1.4 0 2.5-1.1 2.5-2.5S17.9 14 16.5 14H9z" />
+      <rect x="3" y="15" width="7" height="3" />
+    </svg>
+  );
+}
 
 export function PriceDisplay({ 
   price, 
@@ -76,8 +93,9 @@ export function PriceDisplay({
 
   return (
     <div className={`flex flex-col ${alignClass} shrink-0`}>
-      <span className={`price-text ${mainSize} text-black leading-none`}>
-        {formatBYN(price)}
+      <span className={`price-text ${mainSize} text-black leading-none inline-flex items-center`}>
+        <span>{formatBYNNumber(price)}</span>
+        <BynLogo />
       </span>
       <span className={`price-text ${subSize} text-black/50 mt-1 leading-none`}>
         {formatRUB(price)}
