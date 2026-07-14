@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { 
   Home, 
   Heart, 
@@ -362,8 +362,8 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
-  // Tab routing: "home" | "catalog" | "profile"
-  const [activeTab, setActiveTab] = useState<"home" | "catalog" | "profile">("home");
+  // Tab routing: "home" | "catalog" | "profile" | "info"
+  const [activeTab, setActiveTab] = useState<"home" | "catalog" | "profile" | "info">("home");
 
   // Telegram WebApp states
   const [isTelegramAdmin, setIsTelegramAdmin] = useState(false);
@@ -372,6 +372,10 @@ export default function App() {
   // Reviews states
   const [reviews, setReviews] = useState<any[]>([]);
   const [isReviewsLoading, setIsReviewsLoading] = useState(true);
+
+  // Info tab audio
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isInfoAudioPlaying, setIsInfoAudioPlaying] = useState(false);
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -386,6 +390,29 @@ export default function App() {
         }
       }
     }
+  }, []);
+
+  // Supabase keep-alive: пингуем БД каждые 5 минут чтобы не уснула
+  useEffect(() => {
+    const isPlaceholder = 
+      !import.meta.env.VITE_SUPABASE_URL || 
+      import.meta.env.VITE_SUPABASE_URL.includes("placeholder") ||
+      !import.meta.env.VITE_SUPABASE_ANON_KEY ||
+      import.meta.env.VITE_SUPABASE_ANON_KEY === "placeholder";
+
+    if (isPlaceholder) return;
+
+    const ping = async () => {
+      try {
+        await supabase.from("products").select("id", { count: "exact", head: true });
+      } catch {
+        // silently ignore — keep-alive ping
+      }
+    };
+
+    ping();
+    const interval = setInterval(ping, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
   
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
@@ -414,9 +441,9 @@ export default function App() {
 
       setIsProductsLoading(true);
 
-      // Таймаут в 2.5 секунды для предотвращения долгого ожидания при медленной сети
+      // Таймаут 30 секунд для предотвращения долгого ожидания при медленной сети / cold start Supabase
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Supabase timeout")), 2500)
+        setTimeout(() => reject(new Error("Supabase timeout")), 30000)
       );
 
       try {
@@ -473,7 +500,7 @@ export default function App() {
       setIsReviewsLoading(true);
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Supabase timeout")), 2500)
+        setTimeout(() => reject(new Error("Supabase timeout")), 30000)
       );
 
       try {
@@ -514,6 +541,52 @@ export default function App() {
       document.body.style.overflow = "auto";
     }
   }, [selectedProduct, isAdminOpen, isCartOpen]);
+
+  // Info tab audio control
+  const toggleInfoAudio = useCallback(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio("/dadsdasasdas.mp3");
+      audioRef.current.loop = true;
+    }
+    if (isInfoAudioPlaying) {
+      audioRef.current.pause();
+      setIsInfoAudioPlaying(false);
+    } else {
+      audioRef.current.play().catch(() => {});
+      setIsInfoAudioPlaying(true);
+    }
+  }, [isInfoAudioPlaying]);
+
+  // Auto-play audio when switching to info tab
+  useEffect(() => {
+    if (activeTab === "info") {
+      if (!audioRef.current) {
+        audioRef.current = new Audio("/dadsdasasdas.mp3");
+        audioRef.current.loop = true;
+      }
+      audioRef.current.play().catch(() => {});
+      setIsInfoAudioPlaying(true);
+    }
+  }, [activeTab]);
+
+  // Stop audio when leaving info tab
+  useEffect(() => {
+    if (activeTab !== "info" && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsInfoAudioPlaying(false);
+    }
+  }, [activeTab]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // Set default size and color when product is selected in PDP
   useEffect(() => {
@@ -746,28 +819,28 @@ export default function App() {
                   <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">1</div>
                   <div>
                     <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Выбор вещей</h3>
-                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Выберите нужные вещи в каталоге, настройте размер/цвет и добавьте их в корзину.</p>
+                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Выберите понравившиеся вещи в нашем каталоге и добавьте их в корзину</p>
                   </div>
                 </div>
                 <div className="flex gap-4 items-start">
                   <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">2</div>
                   <div>
                     <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оформление</h3>
-                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Перейдите в корзину, заполните форму с контактами и подтвердите заказ.</p>
+                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Перейдите в корзину и нажмите кнопку «Перейти к оформлению» — у вас откроется чат с нашим менеджером.</p>
                   </div>
                 </div>
                 <div className="flex gap-4 items-start">
                   <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">3</div>
                   <div>
                     <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Доставка</h3>
-                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Мы бережно упакуем ваш заказ и отправим его быстрой авиадоставкой.</p>
+                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">После того как вы свяжетесь с менеджером, он ответит на все ваши вопросы, предоставит размерную таблицу, а также предложит два вида доставки на выбор: авиа или авто — и рассчитает полную стоимость вашего заказа</p>
                   </div>
                 </div>
                 <div className="flex gap-4 items-start">
                   <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">4</div>
                   <div>
-                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Получение</h3>
-                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Получите уведомление от менеджера в Telegram и заберите свой заказ.</p>
+                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оплата</h3>
+                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">После подтверждения заказа мы направим вам реквизиты для оплаты. Принимаем: Карты РФ / Карты РБ / Карты банков стран СНГ / Крипта</p>
                   </div>
                 </div>
               </div>
@@ -802,36 +875,36 @@ export default function App() {
               <h2 className="text-sm tracking-[0.2em] font-extrabold uppercase">ЧАСТЫЕ ВОПРОСЫ</h2>
               <div className="flex flex-col gap-4 max-w-2xl">
                 <FaqItem 
-                  question="Как оформить заказ?" 
-                  answer="Добавьте выбранные товары в корзину, заполните контактные данные (ФИО, телефон, Telegram, адрес доставки) и подтвердите заказ. Наш менеджер свяжется с вами в Telegram для завершения заказа." 
-                />
-                <FaqItem 
-                  question="Сколько стоит доставка?" 
-                  answer="Стоимость доставки рассчитывается индивидуально в зависимости от вашего города и веса посылки. Для большинства городов Беларуси и России действует фиксированная стоимость экспресс-доставки." 
-                />
-                <FaqItem 
-                  question="Как отследить заказ?" 
-                  answer="После отправки заказа менеджер предоставит вам трек-номер для отслеживания посылки в реальном времени." 
-                />
-                <FaqItem 
-                  question="Какие способы оплаты?" 
-                  answer="Мы принимаем переводы на карту, электронные платежи и оплату наличными при получении. Подробные реквизиты предоставит менеджер." 
-                />
-                <FaqItem 
-                  question="Через сколько я получу заказ?" 
-                  answer="Авиадоставка обычно занимает от 5 до 10 рабочих дней с момента подтверждения и отправки заказа." 
+                  question="ЧЕМ НАШ МАГАЗИН ЛУЧШЕ ДРУГИХ?" 
+                  answer="Мы ответим на все вопросы и поможем подобрать лучший вариант под ваш бюджет. Если нужный вам товар производится в нескольких вариантах качества, мы предложим вам все доступные фабричные версии. Сопровождаем на всех этапах — от оформления до получения товара. Мы всегда на связи и оперативно отвечаем на любые вопросы. Доставка: Мы предлагаем проверенные способы доставки (Авиа/Авто) и всегда честно информируем о статусе заказа — вы точно знаете, где находится ваш товар. Привозим редкие товары, технику (ноутбуки, телефоны) и электротранспорт по всей территории СНГ (работаем как в розницу, так и оптом). Удобная оплата: Предлагаем разные способы оплаты (карты РФ/РБ/СНГ, криптовалюта) и гибкие условия, включая систему оплаты частями 50/50." 
                 />
                 <FaqItem 
                   question="Можно ли заказать, если товара нет на площадке?" 
-                  answer="Да! Вы можете прислать ссылку или фото любого товара нашему менеджеру в Telegram, и мы найдем, выкупим и доставим его для вас." 
+                  answer="Да! Вы можете прислать ссылку или фото абсолютно любого товара нашему менеджеру — мы найдем, выкупим и доставим его для вас. Найдем любой товар по лучшей цене (как качественную реплику, так и оригинал). Доставляем электротранспорт, ноутбуки, мобильные телефоны и многое другое. Работаем как с розничными, так и с оптовыми заказами." 
                 />
                 <FaqItem 
-                  question="Когда нужно оплачивать заказ?" 
-                  answer="Оплата производится при оформлении заказа. Также вы можете воспользоваться опцией разделения платежа." 
+                  question="Через сколько я получу заказ?" 
+                  answer="Сроки зависят от выбранного способа. Указанное время — это доставка до нас (доставка от нас к вам (СДЭК, Европочта/Белпочта) рассчитывается отдельно): Авиа: 5–10 дней, с момента отправки из Китая. Авто: 18–25 дней, с момента отправки из Китая. Важно: Сроки являются примерными. Логистика — процесс сложный, поэтому возможны небольшие сдвиги из-за работы таможенных или транспортных служб. Мы не всегда можем ускорить этот процесс, но всегда держим вас в курсе и оперативно сообщаем о любых изменениях." 
                 />
                 <FaqItem 
-                  question="Что если нет всей суммы оплатить сразу, можно 50/50?" 
-                  answer="Да, конечно! У нас доступна оплата частями 50/50: половину стоимости вы оплачиваете при оформлении заказа для его запуска в работу и бронирования, а оставшиеся 50% — при получении товара в руки." 
+                  question="Как отследить заказ?" 
+                  answer="Мы информируем вас о статусе на каждом этапе: На складе в Китае: как только товар прибывает на наш склад, мы присылаем вам фотографию. В пути: дальнейший процесс зависит от выбранного способа: Авиа: после отправки товара мы предоставим трек-номер для отслеживания на сайте belpost.by. Авто: мы предоставим номер контейнера. Вы сможете отслеживать статус в таблице, как только номер контейнера появится в таблице, мы предоставим вам ее. Прибытие к нам: когда товар будет у нас, мы проверим его, сделаем подробные фото и пришлем их вам. После этого отправим ваш заказ выбранным способом (СДЭК, Европочта, Белпочта) либо передадим при личной встрече." 
+                />
+                <FaqItem 
+                  question="Что входит в стоимость?" 
+                  answer="Итоговая стоимость вашего заказа складывается из: Себестоимости товара. Доставки из Китая до нас (авиа или авто). Нашей комиссии за работу. Обратите внимание: Доставка от нас до вас (СДЭК, Европочта/Белпочта) оплачивается отдельно при получении. Если вам удобнее оплатить всё сразу, сообщите менеджеру — мы включим её в общий счет." 
+                />
+                <FaqItem 
+                  question="Какие способы оплаты?" 
+                  answer="Мы принимаем: Карты РФ / РБ / стран СНГ, Криптовалюту" 
+                />
+                <FaqItem 
+                  question="Что если нет всей суммы сразу, можно 50/50?" 
+                  answer="Если вам неудобно оплачивать всю сумму сразу, мы предлагаем систему оплаты частями: Первые 50%: вносятся при оформлении заказа. Оставшиеся 50%: вносятся после того, как товар прибыл к нам, мы прислали вам отчетные фотографии и подготовили заказ к отправке." 
+                />
+                <FaqItem 
+                  question="Возможен ли возврат товара?" 
+                  answer="Возврат возможен только в двух случаях: Брак: производственный дефект (например, поврежденная фурнитура или швы). Размер: если товар не подошел по размеру и сохранил товарный вид (бирки, отсутствие следов носки). Важно: если при заказе была предоставлена размерная сетка и вы выбрали размер по ней, возврат по причине «не подошел размер» не осуществляется." 
                 />
               </div>
             </div>
@@ -984,6 +1057,32 @@ export default function App() {
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB 4: INFO */}
+        {activeTab === "info" && (
+          <div className="flex flex-col items-center gap-8 py-6 animate-in fade-in duration-300">
+            {/* Карта Минска */}
+            <div className="w-full max-w-lg">
+              <img 
+                src="/minsk-map.png" 
+                alt="Карта Минска" 
+                className="w-full h-auto border border-gray-200"
+              />
+            </div>
+
+            {/* Кнопка звука */}
+            <button
+              onClick={toggleInfoAudio}
+              className={`px-8 py-4 text-xs tracking-[0.2em] font-extrabold border transition-all cursor-pointer ${
+                isInfoAudioPlaying 
+                  ? "bg-black text-white border-black" 
+                  : "bg-white text-black border-black hover:bg-black hover:text-white"
+              }`}
+            >
+              {isInfoAudioPlaying ? "ВЫКЛЮЧИТЬ ЗВУК" : "ВКЛЮЧИТЬ ЗВУК"}
+            </button>
           </div>
         )}
       </main>
@@ -1194,6 +1293,20 @@ export default function App() {
           >
             <User strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
             <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">ПРОФИЛЬ</span>
+          </button>
+
+          <button 
+            onClick={() => {
+              setActiveTab("info");
+              setIsAdminOpen(false);
+              setIsCartOpen(false);
+            }}
+            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
+              activeTab === "info" ? "text-black" : "text-gray-400 hover:text-black"
+            }`}
+          >
+            <span className="text-lg leading-none">ℹ</span>
+            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">ИНФО</span>
           </button>
         </div>
       </nav>
