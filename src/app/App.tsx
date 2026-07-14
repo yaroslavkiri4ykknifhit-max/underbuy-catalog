@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Home, 
   Heart, 
@@ -362,8 +362,8 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
-  // Tab routing: "home" | "catalog" | "profile" | "info"
-  const [activeTab, setActiveTab] = useState<"home" | "catalog" | "profile" | "info">("home");
+  // Tab routing: "home" | "catalog" | "profile"
+  const [activeTab, setActiveTab] = useState<"home" | "catalog" | "profile">("home");
 
   // Telegram WebApp states
   const [isTelegramAdmin, setIsTelegramAdmin] = useState(false);
@@ -372,10 +372,6 @@ export default function App() {
   // Reviews states
   const [reviews, setReviews] = useState<any[]>([]);
   const [isReviewsLoading, setIsReviewsLoading] = useState(true);
-
-  // Info tab audio
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isInfoAudioPlaying, setIsInfoAudioPlaying] = useState(false);
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
@@ -541,52 +537,6 @@ export default function App() {
       document.body.style.overflow = "auto";
     }
   }, [selectedProduct, isAdminOpen, isCartOpen]);
-
-  // Info tab audio control
-  const toggleInfoAudio = useCallback(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio("/dadsdasasdas.mp3");
-      audioRef.current.loop = true;
-    }
-    if (isInfoAudioPlaying) {
-      audioRef.current.pause();
-      setIsInfoAudioPlaying(false);
-    } else {
-      audioRef.current.play().catch(() => {});
-      setIsInfoAudioPlaying(true);
-    }
-  }, [isInfoAudioPlaying]);
-
-  // Auto-play audio when switching to info tab
-  useEffect(() => {
-    if (activeTab === "info") {
-      if (!audioRef.current) {
-        audioRef.current = new Audio("/dadsdasasdas.mp3");
-        audioRef.current.loop = true;
-      }
-      audioRef.current.play().catch(() => {});
-      setIsInfoAudioPlaying(true);
-    }
-  }, [activeTab]);
-
-  // Stop audio when leaving info tab
-  useEffect(() => {
-    if (activeTab !== "info" && audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      setIsInfoAudioPlaying(false);
-    }
-  }, [activeTab]);
-
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
 
   // Set default size and color when product is selected in PDP
   useEffect(() => {
@@ -1060,31 +1010,6 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: INFO */}
-        {activeTab === "info" && (
-          <div className="flex flex-col items-center gap-8 py-6 animate-in fade-in duration-300">
-            {/* Карта Минска */}
-            <div className="w-full max-w-lg">
-              <img 
-                src="/minsk-map.png" 
-                alt="Карта Минска" 
-                className="w-full h-auto border border-gray-200"
-              />
-            </div>
-
-            {/* Кнопка звука */}
-            <button
-              onClick={toggleInfoAudio}
-              className={`px-8 py-4 text-xs tracking-[0.2em] font-extrabold border transition-all cursor-pointer ${
-                isInfoAudioPlaying 
-                  ? "bg-black text-white border-black" 
-                  : "bg-white text-black border-black hover:bg-black hover:text-white"
-              }`}
-            >
-              {isInfoAudioPlaying ? "ВЫКЛЮЧИТЬ ЗВУК" : "ВКЛЮЧИТЬ ЗВУК"}
-            </button>
-          </div>
-        )}
       </main>
 
       {/* Product Detail Modal (PDP) */}
@@ -1293,20 +1218,6 @@ export default function App() {
           >
             <User strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
             <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">ПРОФИЛЬ</span>
-          </button>
-
-          <button 
-            onClick={() => {
-              setActiveTab("info");
-              setIsAdminOpen(false);
-              setIsCartOpen(false);
-            }}
-            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
-              activeTab === "info" ? "text-black" : "text-gray-400 hover:text-black"
-            }`}
-          >
-            <span className="text-lg leading-none">ℹ</span>
-            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">ИНФО</span>
           </button>
         </div>
       </nav>
