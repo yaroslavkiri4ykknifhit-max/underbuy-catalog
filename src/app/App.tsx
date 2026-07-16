@@ -1,24 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { 
-  Home, 
   Heart, 
   User, 
   Search, 
-  Menu, 
-  Plus, 
-  Minus, 
-  SlidersHorizontal, 
   X, 
   ArrowRight, 
-  ShoppingBag, 
-  Loader2,
   ChevronDown,
-  LayoutGrid
+  LayoutGrid,
+  Info,
+  ExternalLink
 } from "lucide-react";
 import { supabase } from "./utils/supabase";
-import CartDrawer, { CartItem, formatBYN, formatRUB, PriceDisplay } from "./components/ui/CartDrawer";
+import { PriceDisplay } from "./components/ui/CartDrawer";
 import AdminPanel from "./components/AdminPanel";
-import { Toaster, toast } from "sonner";
+import { Toaster } from "sonner";
 
 const CATEGORIES = [
   "ВСЕ", "НАЛИЧИЕ", "ХУДИ/ЗИПКИ", "ЖАКЕТЫ", "ОБУВЬ", 
@@ -26,80 +21,6 @@ const CATEGORIES = [
   "АКСЕССУАРЫ", "ШТАНЫ", "ГОЛОВНЫЕ УБОРЫ", "РЕМНИ", 
   "БОМБЕРЫ", "ПУХОВИКИ"
 ];
-const SIZES = ["OS", "44", "46", "48", "50", "52", "54"];
-const COLORS = ["ЧЕРНЫЙ", "БЕЛЫЙ", "СЕРЫЙ", "ХАКИ", "БОРДОВЫЙ"];
-
-const PRODUCTS_MOCK = [
-  {
-    id: 1,
-    name: "ARCHIVE JACKET 01",
-    brand: "UNDERBUY",
-    category: "ЖАКЕТЫ",
-    price: "€ 1 200",
-    img: "https://images.unsplash.com/photo-1554882195-8cf792f9a571",
-    isNew: true,
-    aspect: "aspect-[4/5] md:aspect-[3/4]",
-    span: "col-span-2 md:col-span-2",
-    description: "Конструкция из плотного хлопка. Удлиненные рукава и асимметричная застежка-молния. Без подкладки для деконструированной посадки.",
-    sizes: ["46", "48", "50"],
-    colors: ["ЧЕРНЫЙ", "СЕРЫЙ"]
-  },
-  {
-    id: 2,
-    name: "VOID COAT",
-    brand: "RICK OWENS",
-    category: "ЖАКЕТЫ",
-    price: "€ 2 450",
-    img: "https://images.unsplash.com/photo-1595065666634-4725aa7e8379",
-    isNew: false,
-    aspect: "aspect-[3/4]",
-    span: "col-span-1 md:col-span-1 md:mt-32",
-    description: "Пальто из шерстяной смеси со структурированными плечами и полностью скрытой системой застежек. Брутальный подход к классическому крою.",
-    sizes: ["48", "50", "52"],
-    colors: ["ЧЕРНЫЙ"]
-  },
-  {
-    id: 3,
-    name: "STRUCTURE SHIRT",
-    brand: "YOHJI YAMAMOTO",
-    category: "ЛОНГИ/СВИТШОТЫ",
-    price: "€ 850",
-    img: "https://images.unsplash.com/photo-1645561305502-63a9ba09ab09",
-    isNew: false,
-    aspect: "aspect-[3/4]",
-    span: "col-span-1 md:col-span-1",
-    description: "Хрустящая поплиновая рубашка. Монохромная палитра с гипертрофированными пропорциями и необработанными краями.",
-    sizes: ["OS", "44", "46"],
-    colors: ["БЕЛЫЙ", "ЧЕРНЫЙ"]
-  },
-  {
-    id: 4,
-    name: "ARTEK STOOL 60",
-    brand: "ARTEK",
-    category: "АКСЕССУАРЫ",
-    price: "€ 450",
-    img: "https://images.unsplash.com/photo-1718049719671-3c0a592ac8c0",
-    isNew: false,
-    aspect: "aspect-square md:aspect-[16/9]",
-    span: "col-span-2 md:col-span-2 mt-8 md:mt-0",
-    description: "Переосмысленная классика. Табурет Artek Stool 60 с брутальной отделкой под бетон. Ультра-лимитированный тираж.",
-    sizes: ["OS"],
-    colors: ["СЕРЫЙ"]
-  },
-  {
-    id: 5,
-    name: "SILENT CHAIR",
-    brand: "BALENCIAGA",
-    category: "АКСЕССУАРЫ",
-    price: "€ 1 100",
-    img: "https://images.unsplash.com/photo-1554104683-c7063687d649",
-    isNew: false,
-    aspect: "aspect-[4/5]",
-    span: "col-span-2 md:col-span-2",
-    description: "Стул из холоднокатаного алюминия. Создан, чтобы существовать исключительно как молчаливый объект в пространстве. Тяжелый и бескомпромиссный.",
-  }
-];
-
 const REVIEWS_MOCK = [
   {
     id: "r1",
@@ -173,6 +94,45 @@ const CATEGORY_WORDS = [
   "COLLECTION", "COLLAB", "LIMITED", "EDITION", "SERIES", "PRE-FALL", "RESORT", 
   "FALL", "WINTER", "SPRING", "SUMMER", "SS", "FW", "AW", "COLLABORATION", "X"
 ];
+
+function stripTelegramFormatting(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/\*\*/g, "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeProduct(row: any) {
+  const title = stripTelegramFormatting(row.title ?? row.name ?? row.product_name ?? "Без названия");
+  const images = Array.isArray(row.images)
+    ? row.images.filter(Boolean)
+    : row.image_url
+      ? [row.image_url]
+      : row.img
+        ? [row.img]
+        : [];
+  // The restored Telegram catalog keeps the source message in raw_text. It is
+  // useful for auditing, but contains markup, delivery links and contact data,
+  // so only show an explicit description in the product card.
+  const rawDescription = row.description ?? "";
+
+  return {
+    ...row,
+    id: row.id ?? row.telegram_message_id ?? title,
+    name: title,
+    brand: cleanBrandName(row.brand),
+    category: stripTelegramFormatting(row.category),
+    description: stripTelegramFormatting(rawDescription),
+    images,
+    image_url: images[0] ?? "",
+    price: row.price ?? row.price_byn ?? row.price_rub ?? "",
+    price_byn: row.price_byn ?? null,
+    price_rub: row.price_rub ?? null,
+    is_new: Boolean(row.is_new ?? row.isNew),
+  };
+}
 
 export function cleanBrandName(rawBrand: string | null | undefined): string {
   if (!rawBrand) return "НЕИЗВЕСТНО";
@@ -338,32 +298,32 @@ function FaqItem({
 export default function App() {
   const [products, setProducts] = useState<any[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("ВСЕ");
   const [activeBrand, setActiveBrand] = useState<string | null>(null);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [activeSize, setActiveSize] = useState<string | null>(null);
-  const [activeColor, setActiveColor] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
   // Search states
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Animation states for adding to cart
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [isCartPop, setIsCartPop] = useState(false);
-
-  // Sizing and Color selection in PDP
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [activePdpImageIndex, setActivePdpImageIndex] = useState(0);
 
-  // Cart and Modals State
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  // Favorites and modal state
+  const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("underbuy_favorites");
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  });
 
-  // Tab routing: "home" | "catalog" | "profile"
-  const [activeTab, setActiveTab] = useState<"home" | "catalog" | "profile">("home");
+  // Tab routing: catalog opens first, while the former home page is now Info.
+  const [activeTab, setActiveTab] = useState<"info" | "catalog" | "profile">("catalog");
 
   // Telegram WebApp states
   const [isTelegramAdmin, setIsTelegramAdmin] = useState(false);
@@ -390,14 +350,6 @@ export default function App() {
 
   // Supabase keep-alive: пингуем БД каждые 5 минут чтобы не уснула
   useEffect(() => {
-    const isPlaceholder = 
-      !import.meta.env.VITE_SUPABASE_URL || 
-      import.meta.env.VITE_SUPABASE_URL.includes("placeholder") ||
-      !import.meta.env.VITE_SUPABASE_ANON_KEY ||
-      import.meta.env.VITE_SUPABASE_ANON_KEY === "placeholder";
-
-    if (isPlaceholder) return;
-
     const ping = async () => {
       try {
         await supabase.from("products").select("id", { count: "exact", head: true });
@@ -410,36 +362,16 @@ export default function App() {
     const interval = setInterval(ping, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
-  
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem("underbuy_cart");
-    return saved ? JSON.parse(saved) : [];
-  });
 
   // Load products from Supabase
   useEffect(() => {
     async function loadProducts() {
-      // Если ключи не заданы или являются плейсхолдерами, мгновенно показываем моки без ожидания сетевого таймаута
-      const isPlaceholder = 
-        !import.meta.env.VITE_SUPABASE_URL || 
-        import.meta.env.VITE_SUPABASE_URL.includes("placeholder") ||
-        !import.meta.env.VITE_SUPABASE_ANON_KEY ||
-        import.meta.env.VITE_SUPABASE_ANON_KEY === "placeholder";
-
-      if (isPlaceholder) {
-        setProducts(PRODUCTS_MOCK.map((p: any) => ({
-          ...p,
-          brand: cleanBrandName(p.brand)
-        })));
-        setIsProductsLoading(false);
-        return;
-      }
-
       setIsProductsLoading(true);
+      setProductsError(null);
 
-      // Таймаут 30 секунд для предотвращения долгого ожидания при медленной сети / cold start Supabase
+      // Не оставляем пользователя на бесконечном skeleton при проблемах сети.
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Supabase timeout")), 30000)
+        setTimeout(() => reject(new Error("Supabase не ответил вовремя")), 15000)
       );
 
       try {
@@ -454,23 +386,14 @@ export default function App() {
         if (result.error) throw result.error;
 
         if (result.data && result.data.length > 0) {
-          const cleaned = result.data.map((p: any) => ({
-            ...p,
-            brand: cleanBrandName(p.brand)
-          }));
-          setProducts(cleaned);
+          setProducts(result.data.map(normalizeProduct));
         } else {
-          setProducts(PRODUCTS_MOCK.map((p: any) => ({
-            ...p,
-            brand: cleanBrandName(p.brand)
-          })));
+          setProducts([]);
         }
       } catch (err) {
-        console.warn("Using mock products (failed loading from Supabase / timeout):", err);
-        setProducts(PRODUCTS_MOCK.map((p: any) => ({
-          ...p,
-          brand: cleanBrandName(p.brand)
-        })));
+        console.error("Не удалось загрузить товары из Supabase", err);
+        setProductsError("Не удалось загрузить каталог. Проверьте соединение и попробуйте ещё раз.");
+        setProducts([]);
       } finally {
         setIsProductsLoading(false);
       }
@@ -481,22 +404,10 @@ export default function App() {
   // Load reviews from Supabase
   useEffect(() => {
     async function loadReviews() {
-      const isPlaceholder = 
-        !import.meta.env.VITE_SUPABASE_URL || 
-        import.meta.env.VITE_SUPABASE_URL.includes("placeholder") ||
-        !import.meta.env.VITE_SUPABASE_ANON_KEY ||
-        import.meta.env.VITE_SUPABASE_ANON_KEY === "placeholder";
-
-      if (isPlaceholder) {
-        setReviews(REVIEWS_MOCK);
-        setIsReviewsLoading(false);
-        return;
-      }
-
       setIsReviewsLoading(true);
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Supabase timeout")), 30000)
+        setTimeout(() => reject(new Error("Supabase не ответил вовремя")), 15000)
       );
 
       try {
@@ -524,115 +435,36 @@ export default function App() {
     loadReviews();
   }, []);
 
-  // Save cart to local storage
+  // Save favorites to local storage
   useEffect(() => {
-    localStorage.setItem("underbuy_cart", JSON.stringify(cartItems));
-  }, [cartItems]);
+    localStorage.setItem("underbuy_favorites", JSON.stringify(favoriteIds));
+  }, [favoriteIds]);
 
-  // Lock body scroll when PDP or Admin panels are open
+  // Lock body scroll when overlays are open
   useEffect(() => {
-    if (selectedProduct || isAdminOpen || isCartOpen) {
+    if (selectedProduct || isAdminOpen || isFavoritesOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "auto";
     }
-  }, [selectedProduct, isAdminOpen, isCartOpen]);
+  }, [selectedProduct, isAdminOpen, isFavoritesOpen]);
 
-  // Set default size and color when product is selected in PDP
   useEffect(() => {
-    if (selectedProduct) {
-      const productSizes = selectedProduct.sizes && selectedProduct.sizes.length > 0 
-        ? selectedProduct.sizes 
-        : SIZES;
-      const productColors = selectedProduct.colors && selectedProduct.colors.length > 0 
-        ? selectedProduct.colors 
-        : COLORS;
-      
-      setSelectedSize(productSizes[0] || "OS");
-      setSelectedColor(productColors[0] || "ЧЕРНЫЙ");
-      setActivePdpImageIndex(0);
-    } else {
-      setSelectedSize(null);
-      setSelectedColor(null);
+    if (!selectedProduct) {
       setActivePdpImageIndex(0);
     }
   }, [selectedProduct]);
 
-  // Cart operations
-  const handleAddToCart = () => {
-    if (!selectedProduct) return;
-    if (!selectedSize) {
-      toast.error("Пожалуйста, выберите размер");
-      return;
-    }
-    if (!selectedColor) {
-      toast.error("Пожалуйста, выберите цвет");
-      return;
-    }
-
-    setIsAddingToCart(true);
-
-    setCartItems((prev) => {
-      const existingIndex = prev.findIndex(
-        (item) => 
-          item.id === selectedProduct.id && 
-          item.size === selectedSize && 
-          item.color === selectedColor
-      );
-
-      if (existingIndex > -1) {
-        const newCart = [...prev];
-        newCart[existingIndex].quantity += 1;
-        return newCart;
-      } else {
-        return [
-          ...prev,
-          {
-            id: selectedProduct.id,
-            name: selectedProduct.name,
-            price: selectedProduct.price,
-            img: (selectedProduct.images && selectedProduct.images.length > 0) ? selectedProduct.images[0] : (selectedProduct.image_url || selectedProduct.img),
-            size: selectedSize,
-            color: selectedColor,
-            quantity: 1,
-          },
-        ];
-      }
-    });
-
-    // Trigger pop animation for cart icons
-    setIsCartPop(true);
-    setTimeout(() => {
-      setIsCartPop(false);
-    }, 450);
-
-    // Complete the adding sequence after 800ms
-    setTimeout(() => {
-      setIsAddingToCart(false);
-      setSelectedProduct(null);
-      setIsCartOpen(true);
-    }, 800);
+  const toggleFavorite = (productId: string | number) => {
+    const id = String(productId);
+    setFavoriteIds((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]);
   };
 
-  const handleUpdateQuantity = (id: string | number, size: string, color: string, delta: number) => {
-    setCartItems((prev) =>
-      prev.map((item) => {
-        if (item.id === id && item.size === size && item.color === color) {
-          return { ...item, quantity: Math.max(1, item.quantity + delta) };
-        }
-        return item;
-      })
-    );
-  };
+  const favoriteProducts = products.filter((product) => favoriteIds.includes(String(product.id)));
 
-  const handleRemoveItem = (id: string | number, size: string, color: string) => {
-    setCartItems((prev) =>
-      prev.filter((item) => !(item.id === id && item.size === size && item.color === color))
-    );
-  };
-
-  const handleClearCart = () => {
-    setCartItems([]);
+  const handleTelegramCheckout = (product: any) => {
+    const message = `Привет, хочу заказать ${product.name}`;
+    window.open(`https://t.me/und3rme?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   };
 
   // Filter products based on selected category, brand, and search query
@@ -661,8 +493,6 @@ export default function App() {
 
     return true;
   });
-
-  const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <div className="min-h-screen bg-white text-black selection:bg-black selection:text-white font-sans uppercase">
@@ -693,23 +523,33 @@ export default function App() {
           </div>
         ) : (
           <>
-            <h1 className="text-[22px] md:text-[26px] tracking-[0.05em] font-black cursor-pointer select-none leading-none" onClick={() => {
-              setActiveTab("home");
-              setActiveCategory("ВСЕ");
-              setIsAdminOpen(false);
-            }}>
-              UNDERBUY
-            </h1>
+            <button
+              type="button"
+              aria-label="Открыть каталог"
+              className="relative w-[78px] h-[52px] md:w-[88px] md:h-[60px] overflow-hidden cursor-pointer shrink-0"
+              onClick={() => {
+                setActiveTab("catalog");
+                setActiveCategory("ВСЕ");
+                setIsAdminOpen(false);
+              }}
+            >
+              <img
+                src={`${import.meta.env.BASE_URL}underbuy-logo.png`}
+                alt="Underbuy"
+                className="absolute max-w-none w-[127.5%] left-[-11%] top-[-43%] select-none"
+              />
+            </button>
             <div className="flex items-center gap-2">
-              {/* Cart Icon in Header */}
+              {/* Favorites icon in header */}
               <button 
-                onClick={() => setIsCartOpen(true)}
-                className={`p-2 group cursor-pointer relative ${isCartPop ? "animate-cart-pop" : ""}`}
+                onClick={() => setIsFavoritesOpen(true)}
+                className="p-2 group cursor-pointer relative"
+                aria-label="Открыть избранное"
               >
-                <ShoppingBag strokeWidth={1} className="w-5 h-5 md:w-6 md:h-6 group-hover:opacity-50 transition-opacity" />
-                {totalCartCount > 0 && (
+                <Heart strokeWidth={1} className="w-5 h-5 md:w-6 md:h-6 group-hover:opacity-50 transition-opacity" />
+                {favoriteProducts.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-black text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                    {totalCartCount}
+                    {favoriteProducts.length}
                   </span>
                 )}
               </button>
@@ -753,14 +593,9 @@ export default function App() {
       {/* Main Content */}
       <main className="pb-32 px-4 md:px-8 pt-6 overflow-x-hidden selection:bg-black selection:text-white">
         
-        {/* TAB 1: HOME */}
-        {activeTab === "home" && (
+        {/* INFO */}
+        {activeTab === "info" && (
           <div className="flex flex-col gap-16 animate-in fade-in duration-300">
-            {/* Landing Hero */}
-            <div className="flex flex-col items-center justify-center text-center py-12 md:py-20 border-b border-gray-100">
-              <h1 className="text-3xl md:text-5xl font-black tracking-[0.2em]">UNDERBUY</h1>
-            </div>
-
             {/* 1. КАК ОФОРМИТЬ ЗАКАЗ */}
             <div className="flex flex-col gap-6">
               <h2 className="text-sm tracking-[0.2em] font-extrabold uppercase">КАК СДЕЛАТЬ ЗАКАЗ</h2>
@@ -768,15 +603,15 @@ export default function App() {
                 <div className="flex gap-4 items-start">
                   <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">1</div>
                   <div>
-                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Выбор вещей</h3>
-                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Выберите понравившиеся вещи в нашем каталоге и добавьте их в корзину</p>
+                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Выбор вещи</h3>
+                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Выберите понравившуюся вещь в каталоге и откройте карточку товара</p>
                   </div>
                 </div>
                 <div className="flex gap-4 items-start">
                   <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">2</div>
                   <div>
                     <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оформление</h3>
-                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Перейдите в корзину и нажмите кнопку «Перейти к оформлению» — у вас откроется чат с нашим менеджером.</p>
+                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Нажмите «Перейти к оформлению» — откроется Telegram с готовым сообщением менеджеру</p>
                   </div>
                 </div>
                 <div className="flex gap-4 items-start">
@@ -916,8 +751,17 @@ export default function App() {
             {!isProductsLoading && (
               <>
                 {filteredProducts.length === 0 ? (
-                  <div className="text-center py-24 text-[10px] tracking-[0.2em] text-gray-400 font-extrabold">
-                    ПО ВАШЕМУ ЗАПРОСУ НИЧЕГО НЕ НАЙДЕНО
+                  <div className="text-center py-24 text-[10px] tracking-[0.2em] text-gray-400 font-extrabold flex flex-col items-center gap-5">
+                    <span>{productsError || "ПО ВАШЕМУ ЗАПРОСУ НИЧЕГО НЕ НАЙДЕНО"}</span>
+                    {productsError && (
+                      <button
+                        type="button"
+                        onClick={() => window.location.reload()}
+                        className="border border-black text-black px-5 py-3 hover:bg-black hover:text-white transition-colors cursor-pointer"
+                      >
+                        ОБНОВИТЬ
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 md:gap-x-8 gap-y-16">
@@ -936,8 +780,23 @@ export default function App() {
                             <img 
                               src={productImg} 
                               alt={product.name} 
+                              loading="lazy"
                               className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${product.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
                             />
+                            <button
+                              type="button"
+                              aria-label={favoriteIds.includes(String(product.id)) ? "Убрать из избранного" : "Добавить в избранное"}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                toggleFavorite(product.id);
+                              }}
+                              className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors"
+                            >
+                              <Heart
+                                strokeWidth={1.5}
+                                className={`w-5 h-5 ${favoriteIds.includes(String(product.id)) ? "fill-black" : "fill-transparent"}`}
+                              />
+                            </button>
                             {product.is_new && (
                               <div className="absolute top-4 left-4 bg-black text-white px-2 py-1 text-[8px] tracking-[0.2em] font-extrabold">
                                 NEW
@@ -952,7 +811,13 @@ export default function App() {
                               <h2 className="text-[11px] md:text-xs tracking-[0.1em] font-bold">{product.name}</h2>
                               <p className="text-[10px] tracking-[0.1em] text-gray-500 font-bold">{product.category}</p>
                             </div>
-                            <PriceDisplay price={product.price} size="md" align="end" />
+                            <PriceDisplay
+                              price={product.price}
+                              priceByn={product.price_byn}
+                              priceRub={product.price_rub}
+                              size="md"
+                              align="end"
+                            />
                           </div>
                         </div>
                       );
@@ -1017,6 +882,8 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex flex-col md:flex-row bg-white overflow-hidden animate-in fade-in zoom-in-95 duration-300">
           {/* Close Button */}
           <button 
+            type="button"
+            aria-label="Закрыть товар"
             onClick={() => setSelectedProduct(null)}
             className="absolute top-4 right-4 md:top-8 md:right-8 z-50 p-2 bg-white/50 backdrop-blur-sm rounded-full hover:bg-white transition-colors cursor-pointer"
           >
@@ -1073,72 +940,41 @@ export default function App() {
                 </p>
               </div>
 
-              <PriceDisplay price={selectedProduct.price} size="lg" align="start" />
+              <PriceDisplay
+                price={selectedProduct.price}
+                priceByn={selectedProduct.price_byn}
+                priceRub={selectedProduct.price_rub}
+                size="lg"
+                align="start"
+              />
 
-              <p className="text-xs leading-relaxed text-gray-600 normal-case">
-                {selectedProduct.description}
-              </p>
+              {selectedProduct.description && (
+                <p className="text-xs leading-relaxed text-gray-600 normal-case">
+                  {selectedProduct.description}
+                </p>
+              )}
 
-              {/* SIZES */}
-              <div className="mt-2">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-[10px] tracking-[0.2em] text-gray-500 font-medium">ВЫБЕРИТЕ РАЗМЕР</span>
-                  <button className="text-[10px] tracking-[0.1em] underline decoration-gray-300 underline-offset-4 text-gray-500 hover:text-black">ТАБЛИЦА РАЗМЕРОВ</button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {(selectedProduct.sizes && selectedProduct.sizes.length > 0 ? selectedProduct.sizes : SIZES).map((size: string) => (
-                    <button
-                      key={`pdp-${size}`}
-                      onClick={() => setSelectedSize(size)}
-                      className={`border px-4 py-2 text-[10px] tracking-[0.1em] transition-colors cursor-pointer ${
-                        selectedSize === size ? "border-black bg-black text-white" : "border-gray-200 hover:border-black"
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
+              <div className="grid grid-cols-[52px_1fr] gap-3 mt-4">
+                <button
+                  type="button"
+                  aria-label={favoriteIds.includes(String(selectedProduct.id)) ? "Убрать из избранного" : "Добавить в избранное"}
+                  onClick={() => toggleFavorite(selectedProduct.id)}
+                  className="border border-black flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  <Heart
+                    strokeWidth={1.5}
+                    className={`w-5 h-5 ${favoriteIds.includes(String(selectedProduct.id)) ? "fill-black" : "fill-transparent"}`}
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTelegramCheckout(selectedProduct)}
+                  className="w-full bg-black text-white border border-black py-4 text-xs tracking-[0.15em] transition-colors flex items-center justify-center gap-3 group cursor-pointer hover:bg-gray-800"
+                >
+                  <span>ПЕРЕЙТИ К ОФОРМЛЕНИЮ</span>
+                  <ExternalLink strokeWidth={1} className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
-
-              {/* COLORS */}
-              <div className="mt-2">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-[10px] tracking-[0.2em] text-gray-500 font-medium">ВЫБЕРИТЕ ЦВЕТ</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {(selectedProduct.colors && selectedProduct.colors.length > 0 ? selectedProduct.colors : COLORS).map((color: string) => (
-                    <button
-                      key={`pdp-${color}`}
-                      onClick={() => setSelectedColor(color)}
-                      className={`border px-4 py-2 text-[10px] tracking-[0.1em] transition-colors cursor-pointer ${
-                        selectedColor === color ? "border-black bg-black text-white" : "border-gray-200 hover:border-black"
-                      }`}
-                    >
-                      {color}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Add to Cart */}
-              <button 
-                onClick={handleAddToCart}
-                disabled={isAddingToCart}
-                className={`w-full py-4 text-xs tracking-[0.2em] transition-all flex items-center justify-center gap-4 group mt-4 cursor-pointer border ${
-                  isAddingToCart 
-                    ? "bg-gray-100 text-gray-500 border-gray-100" 
-                    : "bg-black text-white border-black hover:bg-gray-800"
-                }`}
-              >
-                {isAddingToCart ? (
-                  <span>ДОБАВЛЕНО ✓</span>
-                ) : (
-                  <>
-                    <span>В КОРЗИНУ</span>
-                    <ArrowRight strokeWidth={1} className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
-                  </>
-                )}
-              </button>
               
             </div>
           </div>
@@ -1147,15 +983,93 @@ export default function App() {
 
       {/* Profile is rendered inline as a tab */}
 
-      {/* Cart Drawer Component */}
-      <CartDrawer 
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveItem}
-        onClearCart={handleClearCart}
-      />
+      {/* Favorites drawer */}
+      {isFavoritesOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex justify-end">
+          <button
+            type="button"
+            aria-label="Закрыть избранное"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setIsFavoritesOpen(false)}
+          />
+          <div className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col z-10">
+            <header className="h-[66px] md:h-[74px] px-6 flex justify-between items-center border-b border-gray-200">
+              <h2 className="text-sm tracking-[0.2em] font-medium">ИЗБРАННОЕ</h2>
+              <button
+                type="button"
+                onClick={() => setIsFavoritesOpen(false)}
+                className="p-1 hover:opacity-50 transition-opacity cursor-pointer"
+              >
+                <X strokeWidth={1} className="w-6 h-6" />
+              </button>
+            </header>
+
+            {favoriteProducts.length === 0 ? (
+              <div className="flex-1 flex flex-col justify-center items-center p-6 gap-5 text-center">
+                <Heart strokeWidth={1} className="w-9 h-9 text-gray-300" />
+                <p className="text-[10px] tracking-[0.25em] text-gray-400">В ИЗБРАННОМ ПОКА ПУСТО</p>
+                <button
+                  type="button"
+                  onClick={() => setIsFavoritesOpen(false)}
+                  className="border border-black px-6 py-3 text-[10px] tracking-[0.2em] hover:bg-black hover:text-white transition-colors cursor-pointer"
+                >
+                  ПЕРЕЙТИ К ТОВАРАМ
+                </button>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+                {favoriteProducts.map((product) => {
+                  const productImg = product.images?.[0] || product.image_url || product.img;
+                  return (
+                    <div key={`favorite-${product.id}`} className="flex gap-4 border-b border-gray-100 pb-6">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsFavoritesOpen(false);
+                          setSelectedProduct(product);
+                        }}
+                        className="w-24 aspect-[3/4] bg-gray-100 shrink-0 overflow-hidden cursor-pointer"
+                      >
+                        <img src={productImg} alt={product.name} className="w-full h-full object-cover" />
+                      </button>
+                      <div className="flex-1 flex flex-col justify-between py-1 min-w-0">
+                        <div className="flex justify-between gap-3 items-start">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsFavoritesOpen(false);
+                              setSelectedProduct(product);
+                            }}
+                            className="text-left cursor-pointer min-w-0"
+                          >
+                            <span className="text-[9px] tracking-[0.15em] text-gray-400 font-extrabold block mb-1">{product.brand}</span>
+                            <h3 className="text-[11px] tracking-[0.08em] font-bold normal-case leading-snug">{product.name}</h3>
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Убрать из избранного"
+                            onClick={() => toggleFavorite(product.id)}
+                            className="p-1 shrink-0 cursor-pointer"
+                          >
+                            <Heart strokeWidth={1.5} className="w-5 h-5 fill-black" />
+                          </button>
+                        </div>
+                        <PriceDisplay
+                          price={product.price}
+                          priceByn={product.price_byn}
+                          priceRub={product.price_rub}
+                          size="sm"
+                          align="start"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Admin Panel overlay */}
       {isAdminOpen && (
@@ -1165,25 +1079,12 @@ export default function App() {
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200 z-40">
         <div className="flex justify-between items-center px-4 md:px-24 py-4 md:py-6 max-w-4xl mx-auto">
-          <button 
-            onClick={() => {
-              setActiveTab("home");
-              setIsAdminOpen(false);
-              setIsCartOpen(false);
-            }} 
-            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
-              activeTab === "home" ? "text-black" : "text-gray-400 hover:text-black"
-            }`}
-          >
-            <Home strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
-            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">ГЛАВНАЯ</span>
-          </button>
-
+          {/* Catalog and Info are intentionally swapped: the shop is first. */}
           <button 
             onClick={() => {
               setActiveTab("catalog");
               setIsAdminOpen(false);
-              setIsCartOpen(false);
+              setIsFavoritesOpen(false);
             }} 
             className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
               activeTab === "catalog" ? "text-black" : "text-gray-400 hover:text-black"
@@ -1192,25 +1093,39 @@ export default function App() {
             <LayoutGrid strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
             <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">КАТАЛОГ</span>
           </button>
+
+          <button 
+            onClick={() => {
+              setActiveTab("info");
+              setIsAdminOpen(false);
+              setIsFavoritesOpen(false);
+            }} 
+            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
+              activeTab === "info" ? "text-black" : "text-gray-400 hover:text-black"
+            }`}
+          >
+            <Info strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
+            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">ИНФО</span>
+          </button>
           
           <button 
-            onClick={() => setIsCartOpen(true)}
-            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer relative transition-colors text-gray-400 hover:text-black ${isCartPop ? "animate-cart-pop" : ""}`}
+            onClick={() => setIsFavoritesOpen(true)}
+            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer relative transition-colors ${isFavoritesOpen ? "text-black" : "text-gray-400 hover:text-black"}`}
           >
-            <ShoppingBag strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
-            {totalCartCount > 0 && (
+            <Heart strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
+            {favoriteProducts.length > 0 && (
               <span className="absolute top-0 right-3 bg-black text-white text-[7px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
-                {totalCartCount}
+                {favoriteProducts.length}
               </span>
             )}
-            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">КОРЗИНА</span>
+            <span className="text-[8px] md:text-[9px] tracking-[0.12em] font-bold">ИЗБРАННОЕ</span>
           </button>
           
           <button 
             onClick={() => {
               setActiveTab("profile");
               setIsAdminOpen(false);
-              setIsCartOpen(false);
+              setIsFavoritesOpen(false);
             }}
             className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
               activeTab === "profile" ? "text-black" : "text-gray-400 hover:text-black"

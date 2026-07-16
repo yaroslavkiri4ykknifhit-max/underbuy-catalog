@@ -68,11 +68,6 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      toast.error("Supabase не настроен. Проверьте файл .env");
-      return;
-    }
-
     if (!reviewAuthor.trim()) return toast.error("Введите имя автора");
     if (!reviewText.trim()) return toast.error("Введите текст отзыва");
 
@@ -137,11 +132,6 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      toast.error("Supabase не настроен. Проверьте файл .env");
-      return;
-    }
 
     if (!name.trim()) return toast.error("Введите название товара");
     if (!brand.trim()) return toast.error("Введите бренд товара");

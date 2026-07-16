@@ -68,10 +68,14 @@ export function BynLogo() {
 
 export function PriceDisplay({ 
   price, 
+  priceByn,
+  priceRub,
   size = "md", 
   align = "end" 
 }: { 
   price: string | number; 
+  priceByn?: string | number | null;
+  priceRub?: string | number | null;
   size?: "sm" | "md" | "lg"; 
   align?: "start" | "end" | "center"; 
 }) {
@@ -91,14 +95,27 @@ export function PriceDisplay({
     subSize = "text-[11px] md:text-[12px]";
   }
 
+  const formatExactAmount = (amount: string | number) => {
+    const numeric = Number(amount);
+    if (!Number.isFinite(numeric)) return String(amount);
+    return numeric.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+  };
+
+  const bynText = priceByn !== null && priceByn !== undefined
+    ? formatExactAmount(priceByn)
+    : formatBYNNumber(price);
+  const rubText = priceRub !== null && priceRub !== undefined
+    ? `${formatExactAmount(priceRub)} ₽`
+    : formatRUB(price);
+
   return (
     <div className={`flex flex-col ${alignClass} shrink-0`}>
       <span className={`price-text ${mainSize} text-black leading-none inline-flex items-center`}>
-        <span>{formatBYNNumber(price)}</span>
+        <span>{bynText}</span>
         <BynLogo />
       </span>
       <span className={`price-text ${subSize} text-black/50 mt-1 leading-none`}>
-        {formatRUB(price)}
+        {rubText}
       </span>
     </div>
   );
