@@ -393,15 +393,24 @@ export default function App() {
 
         if (result.data && result.data.length > 0) {
           const normalized = result.data.map(normalizeProduct);
-          // Сортировка по дате добавления created_at (сначала самые новые)
+          // Сортировка по дате добавления (самые свежие товары по telegram_message_id / created_at сверху)
           normalized.sort((a: any, b: any) => {
+            const msgA = Number(a.telegram_message_id || 0);
+            const msgB = Number(b.telegram_message_id || 0);
+
+            if (msgA > 0 && msgB > 0) {
+              if (msgA !== msgB) return msgB - msgA;
+            }
+
             const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
             const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
-            if (timeA !== timeB && timeA > 0 && timeB > 0) {
+
+            if (timeA !== timeB) {
               return timeB - timeA;
             }
-            const idA = Number(a.id ?? 0);
-            const idB = Number(b.id ?? 0);
+
+            const idA = Number(a.id || 0);
+            const idB = Number(b.id || 0);
             return idB - idA;
           });
           setProducts(normalized);
