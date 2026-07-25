@@ -38,7 +38,7 @@ export const formatBYNNumber = (amountOrStr: number | string) => {
 };
 
 export const formatBYN = (amountOrStr: number | string) => {
-  return formatBYNNumber(amountOrStr) + " Br";
+  return formatBYNNumber(amountOrStr) + " BYN";
 };
 
 // RUB = EUR * 100
@@ -55,14 +55,7 @@ export const formatPrice = (amount: number) => {
 
 export function BynLogo() {
   return (
-    <svg 
-      viewBox="3 3 18 18" 
-      className="inline-block w-[0.85em] h-[0.85em] fill-current align-text-bottom select-none ml-[0.1em]" 
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path fillRule="evenodd" clipRule="evenodd" d="M6 3h13v3H9v6h7.5c2.5 0 4.5 2 4.5 4.5S19 21 16.5 21H6V3zm3 11v4h7.5c1.4 0 2.5-1.1 2.5-2.5S17.9 14 16.5 14H9z" />
-      <rect x="3" y="15" width="7" height="3" />
-    </svg>
+    <span className="ml-1 text-[0.85em] font-extrabold tracking-tight">BYN</span>
   );
 }
 

@@ -8,7 +8,11 @@ import {
   ChevronDown,
   LayoutGrid,
   Info,
-  ExternalLink
+  ExternalLink,
+  Compass,
+  ShoppingBag,
+  MessageSquare,
+  HelpCircle
 } from "lucide-react";
 import { supabase } from "./utils/supabase";
 import { PriceDisplay } from "./components/ui/CartDrawer";
@@ -123,7 +127,7 @@ function normalizeProduct(row: any) {
     id: row.id ?? row.telegram_message_id ?? title,
     name: title,
     brand: cleanBrandName(row.brand),
-    category: stripTelegramFormatting(row.category),
+    category: stripTelegramFormatting(row.category).toUpperCase(),
     description: stripTelegramFormatting(rawDescription),
     images,
     image_url: images[0] ?? "",
@@ -131,6 +135,7 @@ function normalizeProduct(row: any) {
     price_byn: row.price_byn ?? null,
     price_rub: row.price_rub ?? null,
     is_new: Boolean(row.is_new ?? row.isNew),
+    created_at: row.created_at || null,
   };
 }
 
@@ -324,6 +329,7 @@ export default function App() {
 
   // Tab routing: catalog opens first, while the former home page is now Info.
   const [activeTab, setActiveTab] = useState<"info" | "catalog" | "profile">("catalog");
+  const [infoSubTab, setInfoSubTab] = useState<"order" | "reviews" | "faq">("order");
 
   // Telegram WebApp states
   const [isTelegramAdmin, setIsTelegramAdmin] = useState(false);
@@ -386,7 +392,19 @@ export default function App() {
         if (result.error) throw result.error;
 
         if (result.data && result.data.length > 0) {
-          setProducts(result.data.map(normalizeProduct));
+          const normalized = result.data.map(normalizeProduct);
+          // Сортировка по дате добавления created_at (сначала самые новые)
+          normalized.sort((a: any, b: any) => {
+            const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            if (timeA !== timeB && timeA > 0 && timeB > 0) {
+              return timeB - timeA;
+            }
+            const idA = Number(a.id ?? 0);
+            const idB = Number(b.id ?? 0);
+            return idB - idA;
+          });
+          setProducts(normalized);
         } else {
           setProducts([]);
         }
@@ -473,7 +491,24 @@ export default function App() {
 
     // Category filter
     if (activeCategory !== "ВСЕ") {
-      if (!product.category || product.category !== activeCategory) return false;
+      const prodCat = (product.category || "").toUpperCase().trim();
+      const targetCat = activeCategory.toUpperCase().trim();
+
+      if (targetCat === "ОБУВЬ") {
+        const isShoe = prodCat === "ОБУВЬ" || 
+                       prodCat.includes("ОБУВЬ") || 
+                       prodCat.includes("КРОССОВК") || 
+                       prodCat.includes("КЕДЫ") || 
+                       prodCat.includes("ТАПКИ") || 
+                       prodCat.includes("СНИКЕРС") || 
+                       prodCat.includes("БОТИНК") || 
+                       prodCat.includes("SHOE") || 
+                       prodCat.includes("SNEAKER") || 
+                       prodCat.includes("BOOT");
+        if (!isShoe) return false;
+      } else {
+        if (prodCat !== targetCat && !prodCat.includes(targetCat)) return false;
+      }
     }
     
     // Brand filter
@@ -591,110 +626,210 @@ export default function App() {
       )}
 
       {/* Main Content */}
-      <main className="pb-32 px-4 md:px-8 pt-6 overflow-x-hidden selection:bg-black selection:text-white">
-        
+      <main className="pb-32 px-4 md:px-8 pt-4 overflow-x-hidden selection:bg-black selection:text-white">
         {/* INFO */}
         {activeTab === "info" && (
-          <div className="flex flex-col gap-16 animate-in fade-in duration-300">
-            {/* 1. КАК ОФОРМИТЬ ЗАКАЗ */}
-            <div className="flex flex-col gap-6">
-              <h2 className="text-sm tracking-[0.2em] font-extrabold uppercase">КАК СДЕЛАТЬ ЗАКАЗ</h2>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="flex gap-4 items-start">
-                  <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">1</div>
-                  <div>
-                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Выбор вещи</h3>
-                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Выберите понравившуюся вещь в каталоге и откройте карточку товара</p>
-                  </div>
+          <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+            {/* NAVIGATOR AT THE VERY TOP OF INFO PAGE */}
+            <div className="bg-white border border-black p-3.5 md:p-4 flex flex-col gap-3 shadow-sm">
+              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                <div className="flex items-center gap-2 text-black">
+                  <Compass strokeWidth={1.5} className="w-4 h-4 shrink-0" />
+                  <span className="text-[11px] md:text-xs tracking-[0.2em] font-extrabold uppercase">НАВИГАЦИЯ ПО ИНФО</span>
                 </div>
-                <div className="flex gap-4 items-start">
-                  <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">2</div>
-                  <div>
-                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оформление</h3>
-                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Нажмите «Перейти к оформлению» — откроется Telegram с готовым сообщением менеджеру</p>
-                  </div>
-                </div>
-                <div className="flex gap-4 items-start">
-                  <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">3</div>
-                  <div>
-                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Доставка</h3>
-                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">После того как вы свяжетесь с менеджером, он ответит на все ваши вопросы, предоставит размерную таблицу, а также предложит два вида доставки на выбор: авиа или авто — и рассчитает полную стоимость вашего заказа</p>
-                  </div>
-                </div>
-                <div className="flex gap-4 items-start">
-                  <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">4</div>
-                  <div>
-                    <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оплата</h3>
-                    <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">После подтверждения заказа мы направим вам реквизиты для оплаты. Принимаем: Карты РФ / Карты РБ / Карты банков стран СНГ / Крипта</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. ОТЗЫВЫ */}
-            <div className="flex flex-col">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-sm tracking-[0.2em] font-extrabold uppercase">ОТЗЫВЫ</h2>
-                <div className="flex items-center gap-1.5 select-none">
-                  <span className="text-xs">★</span>
-                  <span className="text-[10px] tracking-[0.1em] font-extrabold">5.0</span>
-                  <span className="text-[10px] tracking-[0.1em] text-gray-400 font-extrabold ml-1 uppercase">{reviews.length} ОТЗЫВОВ</span>
-                </div>
+                <span className="text-[8px] tracking-[0.15em] text-gray-400 font-extrabold uppercase hidden sm:inline">ВЫБЕРИТЕ РАЗДЕЛ</span>
               </div>
               
-              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-none">
-                {reviews.map((rev) => (
-                  <ReviewCard 
-                    key={rev.id || `${rev.author}-${rev.created_at}`}
-                    author={rev.author} 
-                    date={rev.date} 
-                    rating={rev.rating}
-                    text={rev.text} 
-                  />
-                ))}
+              <div className="flex flex-col gap-2">
+                {/* 1. КАК СДЕЛАТЬ ЗАКАЗ */}
+                <button
+                  type="button"
+                  onClick={() => setInfoSubTab("order")}
+                  className={`w-full py-2.5 px-3.5 border text-[10px] md:text-[11px] tracking-[0.15em] font-extrabold uppercase flex justify-between items-center transition-all cursor-pointer ${
+                    infoSubTab === "order"
+                      ? "bg-black text-white border-black shadow-sm"
+                      : "bg-white text-black border-black hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <ShoppingBag className="w-4 h-4 shrink-0" />
+                    <span>1. КАК СДЕЛАТЬ ЗАКАЗ</span>
+                  </div>
+                  {infoSubTab === "order" && <span className="text-[8px] tracking-[0.2em] bg-white text-black px-2 py-0.5 font-black">ВЫБРАНО</span>}
+                </button>
+
+                {/* 2. ОТЗЫВЫ */}
+                <button
+                  type="button"
+                  onClick={() => setInfoSubTab("reviews")}
+                  className={`w-full py-2.5 px-3.5 border text-[10px] md:text-[11px] tracking-[0.15em] font-extrabold uppercase flex justify-between items-center transition-all cursor-pointer ${
+                    infoSubTab === "reviews"
+                      ? "bg-black text-white border-black shadow-sm"
+                      : "bg-white text-black border-black hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <MessageSquare className="w-4 h-4 shrink-0" />
+                    <span>2. ОТЗЫВЫ</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[9px] tracking-[0.1em] font-black ${infoSubTab === "reviews" ? "text-white" : "text-gray-500"}`}>★ 5.0</span>
+                    {infoSubTab === "reviews" && <span className="text-[8px] tracking-[0.2em] bg-white text-black px-2 py-0.5 font-black">ВЫБРАНО</span>}
+                  </div>
+                </button>
+
+                {/* 3. ЧАСТО ЗАДАВАЕМЫЕ ВОПРОСЫ */}
+                <button
+                  type="button"
+                  onClick={() => setInfoSubTab("faq")}
+                  className={`w-full py-2.5 px-3.5 border text-[10px] md:text-[11px] tracking-[0.15em] font-extrabold uppercase flex justify-between items-center transition-all cursor-pointer ${
+                    infoSubTab === "faq"
+                      ? "bg-black text-white border-black shadow-sm"
+                      : "bg-white text-black border-black hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <HelpCircle className="w-4 h-4 shrink-0" />
+                    <span>3. ЧАСТО ЗАДАВАЕМЫЕ ВОПРОСЫ</span>
+                  </div>
+                  {infoSubTab === "faq" && <span className="text-[8px] tracking-[0.2em] bg-white text-black px-2 py-0.5 font-black">ВЫБРАНО</span>}
+                </button>
               </div>
             </div>
 
-            {/* 3. ЧАСТЫЕ ВОПРОСЫ (FAQ) */}
-            <div className="flex flex-col gap-6">
-              <h2 className="text-sm tracking-[0.2em] font-extrabold uppercase">ЧАСТЫЕ ВОПРОСЫ</h2>
-              <div className="flex flex-col gap-4 max-w-2xl">
-                <FaqItem 
-                  question="ЧЕМ НАШ МАГАЗИН ЛУЧШЕ ДРУГИХ?" 
-                  answer="Мы ответим на все вопросы и поможем подобрать лучший вариант под ваш бюджет. Если нужный вам товар производится в нескольких вариантах качества, мы предложим вам все доступные фабричные версии. Сопровождаем на всех этапах — от оформления до получения товара. Мы всегда на связи и оперативно отвечаем на любые вопросы. Доставка: Мы предлагаем проверенные способы доставки (Авиа/Авто) и всегда честно информируем о статусе заказа — вы точно знаете, где находится ваш товар. Привозим редкие товары, технику (ноутбуки, телефоны) и электротранспорт по всей территории СНГ (работаем как в розницу, так и оптом). Удобная оплата: Предлагаем разные способы оплаты (карты РФ/РБ/СНГ, криптовалюта) и гибкие условия, включая систему оплаты частями 50/50." 
-                />
-                <FaqItem 
-                  question="Можно ли заказать, если товара нет на площадке?" 
-                  answer="Да! Вы можете прислать ссылку или фото абсолютно любого товара нашему менеджеру — мы найдем, выкупим и доставим его для вас. Найдем любой товар по лучшей цене (как качественную реплику, так и оригинал). Доставляем электротранспорт, ноутбуки, мобильные телефоны и многое другое. Работаем как с розничными, так и с оптовыми заказами." 
-                />
-                <FaqItem 
-                  question="Через сколько я получу заказ?" 
-                  answer="Сроки зависят от выбранного способа. Указанное время — это доставка до нас (доставка от нас к вам (СДЭК, Европочта/Белпочта) рассчитывается отдельно): Авиа: 5–10 дней, с момента отправки из Китая. Авто: 18–25 дней, с момента отправки из Китая. Важно: Сроки являются примерными. Логистика — процесс сложный, поэтому возможны небольшие сдвиги из-за работы таможенных или транспортных служб. Мы не всегда можем ускорить этот процесс, но всегда держим вас в курсе и оперативно сообщаем о любых изменениях." 
-                />
-                <FaqItem 
-                  question="Как отследить заказ?" 
-                  answer="Мы информируем вас о статусе на каждом этапе: На складе в Китае: как только товар прибывает на наш склад, мы присылаем вам фотографию. В пути: дальнейший процесс зависит от выбранного способа: Авиа: после отправки товара мы предоставим трек-номер для отслеживания на сайте belpost.by. Авто: мы предоставим номер контейнера. Вы сможете отслеживать статус в таблице, как только номер контейнера появится в таблице, мы предоставим вам ее. Прибытие к нам: когда товар будет у нас, мы проверим его, сделаем подробные фото и пришлем их вам. После этого отправим ваш заказ выбранным способом (СДЭК, Европочта, Белпочта) либо передадим при личной встрече." 
-                />
-                <FaqItem 
-                  question="Что входит в стоимость?" 
-                  answer="Итоговая стоимость вашего заказа складывается из: Себестоимости товара. Доставки из Китая до нас (авиа или авто). Нашей комиссии за работу. Обратите внимание: Доставка от нас до вас (СДЭК, Европочта/Белпочта) оплачивается отдельно при получении. Если вам удобнее оплатить всё сразу, сообщите менеджеру — мы включим её в общий счет." 
-                />
-                <FaqItem 
-                  question="Какие способы оплаты?" 
-                  answer="Мы принимаем: Карты РФ / РБ / стран СНГ, Криптовалюту" 
-                />
-                <FaqItem 
-                  question="Что если нет всей суммы сразу, можно 50/50?" 
-                  answer="Если вам неудобно оплачивать всю сумму сразу, мы предлагаем систему оплаты частями: Первые 50%: вносятся при оформлении заказа. Оставшиеся 50%: вносятся после того, как товар прибыл к нам, мы прислали вам отчетные фотографии и подготовили заказ к отправке." 
-                />
-                <FaqItem 
-                  question="Возможен ли возврат товара?" 
-                  answer="Возврат возможен только в двух случаях: Брак: производственный дефект (например, поврежденная фурнитура или швы). Размер: если товар не подошел по размеру и сохранил товарный вид (бирки, отсутствие следов носки). Важно: если при заказе была предоставлена размерная сетка и вы выбрали размер по ней, возврат по причине «не подошел размер» не осуществляется." 
-                />
-              </div>
+            {/* DYNAMIC CONTENT AREA BASED ON SELECTED SUB-TAB */}
+            <div className="mt-2">
+              {/* 1. КАК ОФОРМИТЬ ЗАКАЗ */}
+              {infoSubTab === "order" && (
+                <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+                  <h2 className="text-xs md:text-sm tracking-[0.2em] font-extrabold uppercase border-b border-black pb-2">КАК СДЕЛАТЬ ЗАКАЗ</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="flex gap-4 items-start border border-black p-4 bg-white">
+                      <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">1</div>
+                      <div>
+                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Выбор вещи</h3>
+                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Выберите понравившуюся вещь в каталоге и откройте карточку товара</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 items-start border border-black p-4 bg-white">
+                      <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">2</div>
+                      <div>
+                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оформление</h3>
+                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Нажмите «Перейти к оформлению» — откроется Telegram с готовым сообщением менеджеру</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 items-start border border-black p-4 bg-white">
+                      <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">3</div>
+                      <div>
+                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Доставка</h3>
+                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">После того как вы свяжетесь с менеджером, он ответит на все ваши вопросы, предоставит размерную таблицу, а также предложит два вида доставки на выбор: авиа или авто — и рассчитает полную стоимость вашего заказа</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 items-start border border-black p-4 bg-white">
+                      <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">4</div>
+                      <div>
+                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оплата</h3>
+                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">После подтверждения заказа мы направим вам реквизиты для оплаты. Принимаем: Карты РФ / Карты РБ / Карты банков стран СНГ / Крипта</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 2. ОТЗЫВЫ */}
+              {infoSubTab === "reviews" && (
+                <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+                  <div className="flex justify-between items-center border-b border-black pb-2">
+                    <h2 className="text-xs md:text-sm tracking-[0.2em] font-extrabold uppercase">ОТЗЫВЫ ПОКУПАТЕЛЕЙ</h2>
+                    <div className="flex items-center gap-1.5 select-none">
+                      <span className="text-xs">★</span>
+                      <span className="text-[10px] tracking-[0.1em] font-extrabold">5.0</span>
+                    </div>
+                  </div>
+
+                  {/* TELEGRAM REVIEWS CHANNEL CARD (@und3rreview) */}
+                  <div className="border border-black bg-black text-white p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center font-extrabold shrink-0 mt-0.5">
+                        <ExternalLink className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-[9px] tracking-[0.2em] text-gray-400 font-extrabold block">TELEGRAM КАНАЛ С ОТЗЫВАМИ</span>
+                        <h3 className="text-xs md:text-sm tracking-[0.15em] font-extrabold uppercase mt-0.5">@UND3RREVIEW</h3>
+                        <p className="text-[10px] tracking-[0.05em] text-gray-300 font-medium normal-case mt-1">
+                          Смотрите ещё больше живых фотоотчетов и отзывов наших клиентов в официальном канале!
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href="https://t.me/und3rreview"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full md:w-auto bg-white text-black border border-white px-5 py-3 text-[10px] tracking-[0.2em] font-extrabold uppercase hover:bg-gray-200 transition-colors shrink-0 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <span>ПЕРЕЙТИ В КАНАЛ @UND3RREVIEW</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                  
+                  <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-none">
+                    {reviews.map((rev) => (
+                      <ReviewCard 
+                        key={rev.id || `${rev.author}-${rev.created_at}`}
+                        author={rev.author} 
+                        date={rev.date} 
+                        rating={rev.rating}
+                        text={rev.text} 
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 3. ЧАСТО ЗАДАВАЕМЫЕ ВОПРОСЫ (FAQ) */}
+              {infoSubTab === "faq" && (
+                <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+                  <h2 className="text-xs md:text-sm tracking-[0.2em] font-extrabold uppercase border-b border-black pb-2">ЧАСТО ЗАДАВАЕМЫЕ ВОПРОСЫ</h2>
+                  <div className="flex flex-col gap-4 max-w-3xl">
+                    <FaqItem 
+                      question="ЧЕМ НАШ МАГАЗИН ЛУЧШЕ ДРУГИХ?" 
+                      answer="Мы ответим на все вопросы и поможем подобрать лучший вариант под ваш бюджет. Если нужный вам товар производится в нескольких вариантах качества, мы предложим вам все доступные фабричные версии. Сопровождаем на всех этапах — от оформления до получения товара. Мы всегда на связи и оперативно отвечаем на любые вопросы. Доставка: Мы предлагаем проверенные способы доставки (Авиа/Авто) и всегда честно информируем о статусе заказа — вы точно знаете, где находится ваш товар. Привозим редкие товары, технику (ноутбуки, телефоны) и электротранспорт по всей территории СНГ (работаем как в розницу, так и оптом). Удобная оплата: Предлагаем разные способы оплаты (карты РФ/РБ/СНГ, криптовалюта) и гибкие условия, включая систему оплаты частями 50/50." 
+                    />
+                    <FaqItem 
+                      question="Можно ли заказать, если товара нет на площадке?" 
+                      answer="Да! Вы можете прислать ссылку или фото абсолютно любого товара нашему менеджеру — мы найдем, выкупим и доставим его для вас. Найдем любой товар по лучшей цене (как качественную реплику, так и оригинал). Доставляем электротранспорт, ноутбуки, мобильные телефоны и многое другое. Работаем как с розничными, так и с оптовыми заказами." 
+                    />
+                    <FaqItem 
+                      question="Через сколько я получу заказ?" 
+                      answer="Сроки зависят от выбранного способа. Указанное время — это доставка до нас (доставка от нас к вам (СДЭК, Европочта/Белпочта) рассчитывается отдельно): Авиа: 5–10 дней, с момента отправки из Китая. Авто: 18–25 дней, с момента отправки из Китая. Важно: Сроки являются примерными. Логистика — процесс сложный, поэтому возможны небольшие сдвиги из-за работы таможенных или транспортных служб. Мы не всегда можем ускорить этот процесс, но всегда держим вас в курсе и оперативно сообщаем о любых изменениях." 
+                    />
+                    <FaqItem 
+                      question="Как отследить заказ?" 
+                      answer="Мы информируем вас о статусе на каждом этапе: На складе в Китае: как только товар прибывает на наш склад, мы присылаем вам фотографию. В пути: дальнейший процесс зависит от выбранного способа: Авиа: после отправки товара мы предоставим трек-номер для отслеживания на сайте belpost.by. Авто: мы предоставим номер контейнера. Вы сможете отслеживать статус в таблице, как только номер контейнера появится в таблице, мы предоставим вам ее. Прибытие к нам: когда товар будет у нас, мы проверим его, сделаем подробные фото и пришлем их вам. После этого отправим ваш заказ выбранным способом (СДЭК, Европочта, Белпочта) либо передадим при личной встрече." 
+                    />
+                    <FaqItem 
+                      question="Что входит в стоимость?" 
+                      answer="Итоговая стоимость вашего заказа складывается из: Себестоимости товара. Доставки из Китая до нас (авиа или авто). Нашей комиссии за работу. Обратите внимание: Доставка от нас до вас (СДЭК, Европочта/Белпочта) оплачивается отдельно при получении. Если вам удобнее оплатить всё сразу, сообщите менеджеру — мы включим её в общий счет." 
+                    />
+                    <FaqItem 
+                      question="Какие способы оплаты?" 
+                      answer="Мы принимаем: Карты РФ / РБ / стран СНГ, Криптовалюту" 
+                    />
+                    <FaqItem 
+                      question="Что если нет всей суммы сразу, можно 50/50?" 
+                      answer="Если вам неудобно оплачивать всю сумму сразу, мы предлагаем систему оплаты частями: Первые 50%: вносятся при оформлении заказа. Оставшиеся 50%: вносятся после того, как товар прибыл к нам, мы прислали вам отчетные фотографии и подготовили заказ к отправке." 
+                    />
+                    <FaqItem 
+                      question="Возможен ли возврат товара?" 
+                      answer="Возврат возможен только в двух случаях: Брак: производственный дефект (например, поврежденная фурнитура или швы). Размер: если товар не подошел по размеру и сохранил товарный вид (бирки, отсутствие следов носки). Важно: если при заказе была предоставлена размерная сетка и вы выбрали размер по ней, возврат по причине «не подошел размер» не осуществляется." 
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
+        
 
         {/* TAB 2: CATALOG */}
         {activeTab === "catalog" && (
@@ -1078,7 +1213,7 @@ export default function App() {
 
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200 z-40">
-        <div className="flex justify-between items-center px-4 md:px-24 py-4 md:py-6 max-w-4xl mx-auto">
+        <div className="flex justify-around items-center px-4 md:px-24 py-4 md:py-6 max-w-4xl mx-auto">
           {/* Catalog and Info are intentionally swapped: the shop is first. */}
           <button 
             onClick={() => {
@@ -1086,7 +1221,7 @@ export default function App() {
               setIsAdminOpen(false);
               setIsFavoritesOpen(false);
             }} 
-            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
+            className={`flex flex-col items-center gap-2 group w-20 cursor-pointer transition-colors ${
               activeTab === "catalog" ? "text-black" : "text-gray-400 hover:text-black"
             }`}
           >
@@ -1100,7 +1235,7 @@ export default function App() {
               setIsAdminOpen(false);
               setIsFavoritesOpen(false);
             }} 
-            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
+            className={`flex flex-col items-center gap-2 group w-20 cursor-pointer transition-colors ${
               activeTab === "info" ? "text-black" : "text-gray-400 hover:text-black"
             }`}
           >
@@ -1110,30 +1245,28 @@ export default function App() {
           
           <button 
             onClick={() => setIsFavoritesOpen(true)}
-            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer relative transition-colors ${isFavoritesOpen ? "text-black" : "text-gray-400 hover:text-black"}`}
+            className={`flex flex-col items-center gap-2 group w-20 cursor-pointer relative transition-colors ${isFavoritesOpen ? "text-black" : "text-gray-400 hover:text-black"}`}
           >
             <Heart strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
             {favoriteProducts.length > 0 && (
-              <span className="absolute top-0 right-3 bg-black text-white text-[7px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
+              <span className="absolute top-0 right-4 bg-black text-white text-[7px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
                 {favoriteProducts.length}
               </span>
             )}
             <span className="text-[8px] md:text-[9px] tracking-[0.12em] font-bold">ИЗБРАННОЕ</span>
           </button>
-          
-          <button 
-            onClick={() => {
-              setActiveTab("profile");
-              setIsAdminOpen(false);
-              setIsFavoritesOpen(false);
-            }}
-            className={`flex flex-col items-center gap-2 group w-16 cursor-pointer transition-colors ${
-              activeTab === "profile" ? "text-black" : "text-gray-400 hover:text-black"
-            }`}
-          >
-            <User strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
-            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">ПРОФИЛЬ</span>
-          </button>
+
+          {isTelegramAdmin && (
+            <button 
+              onClick={() => {
+                setIsAdminOpen(true);
+              }}
+              className="flex flex-col items-center gap-2 group w-20 cursor-pointer text-gray-400 hover:text-black transition-colors"
+            >
+              <User strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
+              <span className="text-[8px] md:text-[9px] tracking-[0.12em] font-bold">АДМИН</span>
+            </button>
+          )}
         </div>
       </nav>
     </div>
