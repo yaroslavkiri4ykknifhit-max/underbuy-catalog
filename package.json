@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "cache:catalog": "node scripts/cache-catalog.mjs",
     "dev": "vite",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"

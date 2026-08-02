@@ -96,7 +96,9 @@ export function PriceDisplay({
 
   const bynText = priceByn !== null && priceByn !== undefined
     ? formatExactAmount(priceByn)
-    : formatBYNNumber(price);
+    : priceRub !== null && priceRub !== undefined
+      ? "—"
+      : formatBYNNumber(price);
   const rubText = priceRub !== null && priceRub !== undefined
     ? `${formatExactAmount(priceRub)} ₽`
     : formatRUB(price);

@@ -17,6 +17,7 @@ import {
 import { supabase } from "./utils/supabase";
 import { PriceDisplay } from "./components/ui/CartDrawer";
 import AdminPanel from "./components/AdminPanel";
+import { ImageWithFallback } from "./components/figma/ImageWithFallback";
 import { Toaster } from "sonner";
 
 const CATEGORIES = [
@@ -64,6 +65,17 @@ const REVIEWS_MOCK = [
 ];
 
 const KNOWN_BRANDS = [
+  { keywords: ["ENFANTS RICHES DEPRIMES"], clean: "ENFANTS RICHES DEPRIMES" },
+  { keywords: ["HYSTERIC GLAMOUR"], clean: "HYSTERIC GLAMOUR" },
+  { keywords: ["IF SIX WAS NINE"], clean: "IF SIX WAS NINE" },
+  { keywords: ["SAINT LAURENT"], clean: "SAINT LAURENT" },
+  { keywords: ["HOOD BY AIR", "HBA"], clean: "HOOD BY AIR" },
+  { keywords: ["NO FAITH STUDIOS"], clean: "NO FAITH STUDIOS" },
+  { keywords: ["ISABEL MARANT"], clean: "ISABEL MARANT" },
+  { keywords: ["GIVENCHY"], clean: "GIVENCHY" },
+  { keywords: ["DIOR"], clean: "DIOR" },
+  { keywords: ["Y-PROJECT", "Y PROJECT"], clean: "Y-PROJECT" },
+  { keywords: ["LGB", "L.G.B"], clean: "LGB" },
   { keywords: ["RICK OWENS", "RICKOWENS"], clean: "RICK OWENS" },
   { keywords: ["BALENCIAGA"], clean: "BALENCIAGA" },
   { keywords: ["VETEMENTS"], clean: "VETEMENTS" },
@@ -137,6 +149,71 @@ function normalizeProduct(row: any) {
     is_new: Boolean(row.is_new ?? row.isNew),
     created_at: row.created_at || null,
   };
+}
+
+const CATALOG_CACHE_KEY = "underbuy_catalog_cache_v1";
+
+function sortProducts(rows: any[]) {
+  const normalized = rows.map(normalizeProduct);
+
+  normalized.sort((a: any, b: any) => {
+    const msgA = Number(a.telegram_message_id || 0);
+    const msgB = Number(b.telegram_message_id || 0);
+
+    if (msgA > 0 && msgB > 0 && msgA !== msgB) {
+      return msgB - msgA;
+    }
+
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    const safeTimeA = Number.isFinite(timeA) ? timeA : 0;
+    const safeTimeB = Number.isFinite(timeB) ? timeB : 0;
+
+    if (safeTimeA !== safeTimeB) {
+      return safeTimeB - safeTimeA;
+    }
+
+    return Number(b.id || 0) - Number(a.id || 0);
+  });
+
+  return normalized;
+}
+
+function readSavedCatalog() {
+  try {
+    const saved = localStorage.getItem(CATALOG_CACHE_KEY);
+    if (!saved) return [];
+
+    const payload = JSON.parse(saved);
+    return Array.isArray(payload?.products) ? payload.products : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCatalog(products: any[]) {
+  try {
+    localStorage.setItem(
+      CATALOG_CACHE_KEY,
+      JSON.stringify({ savedAt: new Date().toISOString(), products }),
+    );
+  } catch {
+    // The catalog still works when storage is unavailable (private mode, quota, etc.).
+  }
+}
+
+async function loadStaticCatalog() {
+  const response = await fetch(`${import.meta.env.BASE_URL}products-cache.json`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Static catalog request failed (${response.status})`);
+  }
+
+  const payload = await response.json();
+  const rows = Array.isArray(payload) ? payload : payload?.products;
+  return Array.isArray(rows) ? rows : [];
 }
 
 export function cleanBrandName(rawBrand: string | null | undefined): string {
@@ -304,6 +381,8 @@ export default function App() {
   const [products, setProducts] = useState<any[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState<string | null>(null);
+  const [catalogNotice, setCatalogNotice] = useState<string | null>(null);
+  const [catalogRefreshKey, setCatalogRefreshKey] = useState(0);
   const [activeCategory, setActiveCategory] = useState("ВСЕ");
   const [activeBrand, setActiveBrand] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
@@ -354,31 +433,37 @@ export default function App() {
     }
   }, []);
 
-  // Supabase keep-alive: пингуем БД каждые 5 минут чтобы не уснула
+  // Show the last deployed/saved catalog immediately, then refresh it from Supabase.
   useEffect(() => {
-    const ping = async () => {
-      try {
-        await supabase.from("products").select("id", { count: "exact", head: true });
-      } catch {
-        // silently ignore — keep-alive ping
-      }
-    };
+    let cancelled = false;
 
-    ping();
-    const interval = setInterval(ping, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Load products from Supabase
-  useEffect(() => {
     async function loadProducts() {
-      setIsProductsLoading(true);
+      const savedProducts = readSavedCatalog();
+      let hasFallback = savedProducts.length > 0;
+
+      if (hasFallback) {
+        setProducts(savedProducts);
+        setIsProductsLoading(false);
+        setCatalogNotice("ОБНОВЛЯЕМ АКТУАЛЬНЫЕ ДАННЫЕ…");
+      } else {
+        setIsProductsLoading(true);
+      }
+
       setProductsError(null);
 
-      // Не оставляем пользователя на бесконечном skeleton при проблемах сети.
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Supabase не ответил вовремя")), 15000)
-      );
+      const staticCatalogPromise = loadStaticCatalog()
+        .then((rows) => {
+          if (cancelled || rows.length === 0) return [];
+
+          const staticProducts = sortProducts(rows);
+          hasFallback = true;
+          setProducts(staticProducts);
+          setIsProductsLoading(false);
+          setCatalogNotice("ПОКАЗЫВАЕМ СОХРАНЁННЫЙ КАТАЛОГ — ОБНОВЛЯЕМ ДАННЫЕ…");
+          saveCatalog(staticProducts);
+          return staticProducts;
+        })
+        .catch(() => []);
 
       try {
         const fetchPromise = supabase
@@ -386,47 +471,42 @@ export default function App() {
           .select("*")
           .order("created_at", { ascending: false });
 
-        // Запуск гонки между запросом к БД и таймаутом
-        const result: any = await Promise.race([fetchPromise, timeoutPromise]);
+        const result: any = await Promise.race([
+          fetchPromise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Supabase не ответил вовремя")), 12000),
+          ),
+        ]);
 
         if (result.error) throw result.error;
+        if (cancelled) return;
 
-        if (result.data && result.data.length > 0) {
-          const normalized = result.data.map(normalizeProduct);
-          // Сортировка по дате добавления (самые свежие товары по telegram_message_id / created_at сверху)
-          normalized.sort((a: any, b: any) => {
-            const msgA = Number(a.telegram_message_id || 0);
-            const msgB = Number(b.telegram_message_id || 0);
+        const liveProducts = sortProducts(result.data || []);
+        setProducts(liveProducts);
+        saveCatalog(liveProducts);
+        setCatalogNotice(null);
+      } catch {
+        await staticCatalogPromise;
+        if (cancelled) return;
 
-            if (msgA > 0 && msgB > 0) {
-              if (msgA !== msgB) return msgB - msgA;
-            }
-
-            const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
-            const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
-
-            if (timeA !== timeB) {
-              return timeB - timeA;
-            }
-
-            const idA = Number(a.id || 0);
-            const idB = Number(b.id || 0);
-            return idB - idA;
-          });
-          setProducts(normalized);
+        if (hasFallback) {
+          setProductsError(null);
+          setCatalogNotice("КАТАЛОГ ДОСТУПЕН ИЗ РЕЗЕРВА — ОБНОВИМ АВТОМАТИЧЕСКИ");
         } else {
+          setProductsError("КАТАЛОГ ВРЕМЕННО НЕДОСТУПЕН");
+          setCatalogNotice(null);
           setProducts([]);
         }
-      } catch (err) {
-        console.error("Не удалось загрузить товары из Supabase", err);
-        setProductsError("Не удалось загрузить каталог. Проверьте соединение и попробуйте ещё раз.");
-        setProducts([]);
       } finally {
-        setIsProductsLoading(false);
+        if (!cancelled) setIsProductsLoading(false);
       }
     }
+
     loadProducts();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogRefreshKey]);
 
   // Load reviews from Supabase
   useEffect(() => {
@@ -452,8 +532,7 @@ export default function App() {
         } else {
           setReviews(REVIEWS_MOCK);
         }
-      } catch (err) {
-        console.warn("Using mock reviews (failed loading from Supabase / timeout):", err);
+      } catch {
         setReviews(REVIEWS_MOCK);
       } finally {
         setIsReviewsLoading(false);
@@ -489,9 +568,9 @@ export default function App() {
 
   const favoriteProducts = products.filter((product) => favoriteIds.includes(String(product.id)));
 
-  const handleTelegramCheckout = (product: any) => {
+  const getTelegramCheckoutUrl = (product: any) => {
     const message = `Привет, хочу заказать ${product.name}`;
-    window.open(`https://t.me/und3rme?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+    return `https://t.me/und3rme?text=${encodeURIComponent(message)}`;
   };
 
   // Filter products based on selected category, brand, and search query
@@ -570,7 +649,7 @@ export default function App() {
             <button
               type="button"
               aria-label="Открыть каталог"
-              className="relative w-[78px] h-[52px] md:w-[88px] md:h-[60px] overflow-hidden cursor-pointer shrink-0"
+              className="relative w-[78px] h-[52px] md:w-[88px] md:h-[60px] overflow-hidden cursor-pointer shrink-0 focus:outline-none"
               onClick={() => {
                 setActiveTab("catalog");
                 setActiveCategory("ВСЕ");
@@ -601,6 +680,7 @@ export default function App() {
                 <button 
                   onClick={() => setIsSearchOpen(true)}
                   className="p-2 -mr-2 group cursor-pointer"
+                  aria-label="Открыть поиск"
                 >
                   <Search strokeWidth={1} className="w-5 h-5 md:w-6 md:h-6 group-hover:opacity-50 transition-opacity" />
                 </button>
@@ -843,9 +923,43 @@ export default function App() {
         {/* TAB 2: CATALOG */}
         {activeTab === "catalog" && (
           <div className="animate-in fade-in duration-300">
+            <section className="flex items-end justify-between gap-6 py-4 md:py-5 border-b border-black mb-6">
+              <div className="max-w-2xl">
+                <h1 className="text-[clamp(2rem,4.5vw,3.75rem)] leading-[0.88] tracking-[-0.06em] font-black">
+                  КАТАЛОГ
+                </h1>
+                <p className="mt-3 text-[9px] md:text-[10px] tracking-[0.16em] text-gray-500 font-bold leading-relaxed">
+                  ВЫБЕРИТЕ ВЕЩЬ — ОФОРМЛЕНИЕ ЗАКАЗА ОТКРОЕТСЯ В TELEGRAM
+                </p>
+              </div>
+              <div className="text-right shrink-0 pb-0.5">
+                <span className="block text-xl md:text-3xl font-black tracking-[-0.05em] leading-none">
+                  {isProductsLoading ? "—" : filteredProducts.length}
+                </span>
+                <span className="block mt-1 text-[8px] tracking-[0.18em] text-gray-400 font-extrabold">
+                  ПОЗИЦИЙ
+                </span>
+              </div>
+            </section>
+
+            {catalogNotice && !isProductsLoading && filteredProducts.length > 0 && (
+              <div className="mb-4 flex items-center justify-between gap-4 border border-black/15 bg-[#f7f7f7] px-4 py-3">
+                <span className="text-[8px] md:text-[9px] tracking-[0.14em] text-gray-600 font-extrabold leading-relaxed">
+                  {catalogNotice}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCatalogRefreshKey((value) => value + 1)}
+                  className="shrink-0 text-[8px] tracking-[0.16em] font-black underline underline-offset-4 cursor-pointer"
+                >
+                  ОБНОВИТЬ
+                </button>
+              </div>
+            )}
+
             {/* Loading Indicator (Skeleton Screen with Shimmer) */}
             {isProductsLoading && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 md:gap-x-8 gap-y-16">
+              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-x-3 md:gap-x-6 gap-y-10 md:gap-y-16">
                 <div className="col-span-2 md:col-span-2 flex flex-col gap-3">
                   <div className="w-full aspect-[4/5] md:aspect-[3/4] shimmer-effect" />
                   <div className="flex justify-between items-start mt-2">
@@ -900,7 +1014,7 @@ export default function App() {
                     {productsError && (
                       <button
                         type="button"
-                        onClick={() => window.location.reload()}
+                        onClick={() => setCatalogRefreshKey((value) => value + 1)}
                         className="border border-black text-black px-5 py-3 hover:bg-black hover:text-white transition-colors cursor-pointer"
                       >
                         ОБНОВИТЬ
@@ -908,24 +1022,29 @@ export default function App() {
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 md:gap-x-8 gap-y-16">
+                  <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-x-3 md:gap-x-6 gap-y-10 md:gap-y-16">
                     {filteredProducts.map((product) => {
                       const productImg = (product.images && product.images.length > 0) ? product.images[0] : (product.image_url || product.img);
                       const aspectClass = product.aspect || "aspect-[3/4]";
                       const spanClass = product.span || "col-span-1 md:col-span-1";
 
                       return (
-                        <div 
+                        <article
                           key={product.id}
-                          onClick={() => setSelectedProduct(product)}
-                          className={`${spanClass} group cursor-pointer flex flex-col gap-3`}
+                          className={`${spanClass} group flex flex-col gap-3`}
                         >
-                          <div className={`relative overflow-hidden w-full ${aspectClass} bg-gray-100`}>
-                            <img 
+                          <div className={`relative overflow-hidden w-full ${aspectClass} bg-[#f3f3f3]`}>
+                            <ImageWithFallback
                               src={productImg} 
                               alt={product.name} 
                               loading="lazy"
-                              className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${product.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
+                              className={`w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035] ${product.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
+                            />
+                            <button
+                              type="button"
+                              aria-label={`Открыть ${product.name}`}
+                              onClick={() => setSelectedProduct(product)}
+                              className="absolute inset-0 z-10 cursor-pointer focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black"
                             />
                             <button
                               type="button"
@@ -934,7 +1053,7 @@ export default function App() {
                                 event.stopPropagation();
                                 toggleFavorite(product.id);
                               }}
-                              className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors"
+                              className="absolute z-20 top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors cursor-pointer"
                             >
                               <Heart
                                 strokeWidth={1.5}
@@ -947,23 +1066,35 @@ export default function App() {
                               </div>
                             )}
                           </div>
-                          <div className="flex justify-between items-start mt-2">
-                            <div className="flex flex-col gap-1">
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Открыть ${product.name}`}
+                            onClick={() => setSelectedProduct(product)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setSelectedProduct(product);
+                              }
+                            }}
+                            className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 pt-1 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-4"
+                          >
+                            <div className="flex flex-col gap-1 min-w-0">
                               {product.brand && (
                                 <span className="text-[9px] tracking-[0.2em] text-gray-400 font-extrabold">{product.brand}</span>
                               )}
-                              <h2 className="text-[11px] md:text-xs tracking-[0.1em] font-bold">{product.name}</h2>
+                              <h2 className="text-[11px] md:text-xs tracking-[0.06em] font-extrabold normal-case leading-snug">{product.name}</h2>
                               <p className="text-[10px] tracking-[0.1em] text-gray-500 font-bold">{product.category}</p>
                             </div>
                             <PriceDisplay
                               price={product.price}
                               priceByn={product.price_byn}
                               priceRub={product.price_rub}
-                              size="md"
-                              align="end"
+                              size="sm"
+                              align="start"
                             />
                           </div>
-                        </div>
+                        </article>
                       );
                     })}
                   </div>
@@ -1110,14 +1241,15 @@ export default function App() {
                     className={`w-5 h-5 ${favoriteIds.includes(String(selectedProduct.id)) ? "fill-black" : "fill-transparent"}`}
                   />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleTelegramCheckout(selectedProduct)}
+                <a
+                  href={getTelegramCheckoutUrl(selectedProduct)}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-full bg-black text-white border border-black py-4 text-xs tracking-[0.15em] transition-colors flex items-center justify-center gap-3 group cursor-pointer hover:bg-gray-800"
                 >
                   <span>ПЕРЕЙТИ К ОФОРМЛЕНИЮ</span>
                   <ExternalLink strokeWidth={1} className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </button>
+                </a>
               </div>
               
             </div>
