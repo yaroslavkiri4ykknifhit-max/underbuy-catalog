@@ -4,8 +4,11 @@ import { fileURLToPath } from "node:url";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const outputPath = resolve(scriptDirectory, "../public/products-cache.json");
-const supabaseUrl = process.env.VITE_SUPABASE_URL?.replace(/\/$/, "");
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = (
+  process.env.VITE_SUPABASE_URL || "https://vwwwbndppuevwumnyvlj.supabase.co"
+).replace(/\/$/, "");
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_ARbHJCJKF99slgCONTD_ag_hzEWXOXf";
+const supabasePageSize = 500;
 const telegramChannel = "underrbuy_catalog";
 const knownTelegramLastId = 4195;
 const catalogWindowSize = 320;
@@ -215,22 +218,43 @@ async function fetchTelegramCatalog() {
 async function fetchSupabaseCatalog() {
   if (!supabaseUrl || !supabaseKey) return [];
 
-  const response = await fetch(
-    `${supabaseUrl}/rest/v1/products?select=*&order=created_at.desc`,
-    {
+  const products = [];
+  let beforeTelegramMessageId = null;
+
+  while (true) {
+    const query = new URLSearchParams({
+      select: "*",
+      order: "telegram_message_id.desc",
+      limit: String(supabasePageSize),
+    });
+
+    if (beforeTelegramMessageId !== null) {
+      query.set("telegram_message_id", `lt.${beforeTelegramMessageId}`);
+    }
+
+    const response = await fetch(`${supabaseUrl}/rest/v1/products?${query}`, {
       headers: {
         apikey: supabaseKey,
         Authorization: `Bearer ${supabaseKey}`,
       },
-    },
-  );
+    });
 
-  if (!response.ok) {
-    throw new Error(`Supabase catalog request failed (${response.status})`);
+    if (!response.ok) {
+      throw new Error(`Supabase catalog request failed (${response.status})`);
+    }
+
+    const page = await response.json();
+    if (!Array.isArray(page)) break;
+    products.push(...page);
+
+    if (page.length < supabasePageSize) break;
+
+    const nextCursor = Number(page[page.length - 1]?.telegram_message_id);
+    if (!Number.isFinite(nextCursor) || nextCursor === beforeTelegramMessageId) break;
+    beforeTelegramMessageId = nextCursor;
   }
 
-  const products = await response.json();
-  return Array.isArray(products) ? products : [];
+  return products;
 }
 
 async function readPreviousCatalog() {

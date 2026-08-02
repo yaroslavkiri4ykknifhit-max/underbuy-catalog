@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Heart, 
   User, 
@@ -152,6 +152,7 @@ function normalizeProduct(row: any) {
 }
 
 const CATALOG_CACHE_KEY = "underbuy_catalog_cache_v1";
+const SUPABASE_PAGE_SIZE = 500;
 
 function sortProducts(rows: any[]) {
   const normalized = rows.map(normalizeProduct);
@@ -193,13 +194,62 @@ function readSavedCatalog() {
 
 function saveCatalog(products: any[]) {
   try {
+    const compactProducts = products.map((product) => ({
+      id: product.id,
+      telegram_message_id: product.telegram_message_id,
+      name: product.name,
+      brand: product.brand,
+      category: product.category,
+      description: product.description,
+      images: product.images,
+      image_url: product.image_url,
+      price: product.price,
+      price_byn: product.price_byn,
+      price_rub: product.price_rub,
+      is_new: product.is_new,
+      created_at: product.created_at,
+      aspect: product.aspect,
+      span: product.span,
+    }));
+
     localStorage.setItem(
       CATALOG_CACHE_KEY,
-      JSON.stringify({ savedAt: new Date().toISOString(), products }),
+      JSON.stringify({ savedAt: new Date().toISOString(), products: compactProducts }),
     );
   } catch {
     // The catalog still works when storage is unavailable (private mode, quota, etc.).
   }
+}
+
+async function loadAllSupabaseProducts() {
+  const products: any[] = [];
+  let beforeTelegramMessageId: number | null = null;
+
+  while (true) {
+    let query = supabase
+      .from("products")
+      .select("*")
+      .order("telegram_message_id", { ascending: false })
+      .limit(SUPABASE_PAGE_SIZE);
+
+    if (beforeTelegramMessageId !== null) {
+      query = query.lt("telegram_message_id", beforeTelegramMessageId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const page = data || [];
+    products.push(...page);
+
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+
+    const nextCursor = Number(page[page.length - 1]?.telegram_message_id);
+    if (!Number.isFinite(nextCursor) || nextCursor === beforeTelegramMessageId) break;
+    beforeTelegramMessageId = nextCursor;
+  }
+
+  return products;
 }
 
 async function loadStaticCatalog() {
@@ -466,10 +516,7 @@ export default function App() {
         .catch(() => []);
 
       try {
-        const fetchPromise = supabase
-          .from("products")
-          .select("*")
-          .order("created_at", { ascending: false });
+        const fetchPromise = loadAllSupabaseProducts();
 
         const result: any = await Promise.race([
           fetchPromise,
@@ -478,10 +525,9 @@ export default function App() {
           ),
         ]);
 
-        if (result.error) throw result.error;
         if (cancelled) return;
 
-        const liveProducts = sortProducts(result.data || []);
+        const liveProducts = sortProducts(result || []);
         setProducts(liveProducts);
         saveCatalog(liveProducts);
         setCatalogNotice(null);
@@ -566,7 +612,15 @@ export default function App() {
     setFavoriteIds((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]);
   };
 
-  const favoriteProducts = products.filter((product) => favoriteIds.includes(String(product.id)));
+  const favoriteIdSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
+  const favoriteProducts = useMemo(
+    () => products.filter((product) => favoriteIdSet.has(String(product.id))),
+    [favoriteIdSet, products],
+  );
+  const brandOptions = useMemo(
+    () => ["ВСЕ БРЕНДЫ", ...(Array.from(new Set(products.map((product) => product.brand).filter(Boolean))) as string[])],
+    [products],
+  );
 
   const getTelegramCheckoutUrl = (product: any) => {
     const message = `Привет, хочу заказать ${product.name}`;
@@ -574,7 +628,7 @@ export default function App() {
   };
 
   // Filter products based on selected category, brand, and search query
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = useMemo(() => products.filter((product) => {
     if (!product) return false;
 
     // Category filter
@@ -615,7 +669,7 @@ export default function App() {
     }
 
     return true;
-  });
+  }), [activeBrand, activeCategory, products, searchQuery]);
 
   return (
     <div className="min-h-screen bg-white text-black selection:bg-black selection:text-white font-sans uppercase">
@@ -705,7 +759,7 @@ export default function App() {
           <CustomSelect 
             label="БРЕНД" 
             value={activeBrand || "ВСЕ БРЕНДЫ"} 
-            options={["ВСЕ БРЕНДЫ", ...(Array.from(new Set(products.map(p => p.brand).filter(Boolean))) as string[])]} 
+            options={brandOptions}
             onChange={(val) => {
               setActiveBrand(val === "ВСЕ БРЕНДЫ" ? null : val);
               setIsAdminOpen(false);
@@ -1031,7 +1085,7 @@ export default function App() {
                       return (
                         <article
                           key={product.id}
-                          className={`${spanClass} group flex flex-col gap-3`}
+                          className={`${spanClass} catalog-product group flex flex-col gap-3`}
                         >
                           <div className={`relative overflow-hidden w-full ${aspectClass} bg-[#f3f3f3]`}>
                             <ImageWithFallback
@@ -1048,7 +1102,7 @@ export default function App() {
                             />
                             <button
                               type="button"
-                              aria-label={favoriteIds.includes(String(product.id)) ? "Убрать из избранного" : "Добавить в избранное"}
+                              aria-label={favoriteIdSet.has(String(product.id)) ? "Убрать из избранного" : "Добавить в избранное"}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 toggleFavorite(product.id);
@@ -1057,7 +1111,7 @@ export default function App() {
                             >
                               <Heart
                                 strokeWidth={1.5}
-                                className={`w-5 h-5 ${favoriteIds.includes(String(product.id)) ? "fill-black" : "fill-transparent"}`}
+                                className={`w-5 h-5 ${favoriteIdSet.has(String(product.id)) ? "fill-black" : "fill-transparent"}`}
                               />
                             </button>
                             {product.is_new && (
@@ -1232,13 +1286,13 @@ export default function App() {
               <div className="grid grid-cols-[52px_1fr] gap-3 mt-4">
                 <button
                   type="button"
-                  aria-label={favoriteIds.includes(String(selectedProduct.id)) ? "Убрать из избранного" : "Добавить в избранное"}
+                  aria-label={favoriteIdSet.has(String(selectedProduct.id)) ? "Убрать из избранного" : "Добавить в избранное"}
                   onClick={() => toggleFavorite(selectedProduct.id)}
                   className="border border-black flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                   <Heart
                     strokeWidth={1.5}
-                    className={`w-5 h-5 ${favoriteIds.includes(String(selectedProduct.id)) ? "fill-black" : "fill-transparent"}`}
+                    className={`w-5 h-5 ${favoriteIdSet.has(String(selectedProduct.id)) ? "fill-black" : "fill-transparent"}`}
                   />
                 </button>
                 <a
