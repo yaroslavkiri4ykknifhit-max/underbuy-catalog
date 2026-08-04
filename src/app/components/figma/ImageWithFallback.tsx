@@ -1,27 +1,38 @@
-import React, { useState } from 'react'
-
-const ERROR_IMG_SRC =
-  'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODgiIGhlaWdodD0iODgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgc3Ryb2tlPSIjMDAwIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzLjciPjxyZWN0IHg9IjE2IiB5PSIxNiIgd2lkdGg9IjU2IiBoZWlnaHQ9IjU2IiByeD0iNiIvPjxwYXRoIGQ9Im0xNiA1OCAxNi0xOCAzMiAzMiIvPjxjaXJjbGUgY3g9IjUzIiBjeT0iMzUiIHI9IjciLz48L3N2Zz4KCg=='
+import React, { useEffect, useState } from "react";
 
 export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElement>) {
-  const [didError, setDidError] = useState(false)
+  const [didError, setDidError] = useState(false);
+  const { src, alt, style, className, ...rest } = props;
+  const hasSource = typeof src === "string" && src.trim().length > 0;
 
-  const handleError = () => {
-    setDidError(true)
+  useEffect(() => {
+    setDidError(false);
+  }, [src]);
+
+  if (didError || !hasSource) {
+    return (
+      <div
+        className={`inline-flex bg-[#f3f3f3] text-center align-middle items-center justify-center ${className ?? ""}`}
+        style={style}
+        role="img"
+        aria-label={alt || "Изображение товара недоступно"}
+      >
+        <div className="flex flex-col items-center justify-center gap-2 px-4 text-black/35 select-none">
+          <span className="text-xl md:text-2xl font-black tracking-[-0.08em] lowercase">underbuy</span>
+          <span className="text-[8px] font-extrabold tracking-[0.18em] uppercase">фото обновляется</span>
+        </div>
+      </div>
+    );
   }
 
-  const { src, alt, style, className, ...rest } = props
-
-  return didError ? (
-    <div
-      className={`inline-block bg-gray-100 text-center align-middle ${className ?? ''}`}
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
       style={style}
-    >
-      <div className="flex items-center justify-center w-full h-full">
-        <img src={ERROR_IMG_SRC} alt="Error loading image" {...rest} data-original-url={src} />
-      </div>
-    </div>
-  ) : (
-    <img src={src} alt={alt} className={className} style={style} {...rest} onError={handleError} />
-  )
+      {...rest}
+      onError={() => setDidError(true)}
+    />
+  );
 }

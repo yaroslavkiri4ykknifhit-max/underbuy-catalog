@@ -14,6 +14,51 @@ const knownTelegramLastId = 4195;
 const catalogWindowSize = 320;
 const concurrency = 12;
 
+const brandAliases = [
+  [["ENFANTS RICHES DEPRIMES", "ENFANTS RICHES", "ENFATNS RICHES", "ERD"], "ENFANTS RICHES DEPRIMES"],
+  [["NUMBER (N)INE", "NUMBER NINE", "NUMBER(N)INE"], "NUMBER (N)INE"],
+  [["RICK OWENS", "RICKOWENS"], "RICK OWENS"],
+  [["GRAILZ PROJECT", "GRAILZ"], "GRAILZ PROJECT"],
+  [["HYSTERIC GLAMOUR"], "HYSTERIC GLAMOUR"],
+  [["THUG CLUB"], "THUG CLUB"],
+  [["SAINT LAURENT"], "SAINT LAURENT"],
+  [["NO FAITH STUDIOS", "NO FAITH"], "NO FAITH STUDIOS"],
+  [["PROTOCOL INDEX"], "PROTOCOL INDEX"],
+  [["CHROME HEARTS", "CHROMEHEARTS"], "CHROME HEARTS"],
+  [["MAISON MARGIELA", "MARGIELA"], "MAISON MARGIELA"],
+  [["HOOD BY AIR", "HBA"], "HOOD BY AIR"],
+  [["RAF SIMONS", "RAFSIMONS"], "RAF SIMONS"],
+  [["IF SIX WAS NINE"], "IF SIX WAS NINE"],
+  [["ALICE HOLLYWOOD"], "ALICE HOLLYWOOD"],
+  [["BALENCIAGA"], "BALENCIAGA"],
+  [["MAISON MIHARA", "MIHARA YASUHIRO"], "MAISON MIHARA YASUHIRO"],
+  [["MELANIN ARCHIVE"], "MELANIN ARCHIVE"],
+  [["UNDERCOVER"], "UNDERCOVER"],
+  [["VETEMENTS"], "VETEMENTS"],
+  [["DIOR HOMME", "DIOR HOME", "DIOR"], "DIOR"],
+  [["MOWALOLA"], "MOWALOLA"],
+  [["FAR ARCHIVE"], "FAR ARCHIVE"],
+  [["RACER WORLDWIDE"], "RACER WORLDWIDE"],
+  [["14TH ADDICTION"], "14TH ADDICTION"],
+  [["VIVIENNE WESTWOOD"], "VIVIENNE WESTWOOD"],
+  [["BEAUTY:BEAST"], "BEAUTY:BEAST"],
+  [["BALMAIN"], "BALMAIN"],
+  [["LGB", "L.G.B"], "LGB"],
+  [["HELIOT EMIL"], "HELIOT EMIL"],
+  [["1017 ALYX", "ALYX"], "ALYX"],
+  [["YOHJI YAMAMOTO"], "YOHJI YAMAMOTO"],
+  [["TORNADO MART"], "TORNADO MART"],
+  [["COMME DES GARCONS"], "COMME DES GARCONS"],
+  [["ACNE STUDIOS"], "ACNE STUDIOS"],
+  [["POST ARCHIVE FACTION"], "POST ARCHIVE FACTION"],
+  [["JUNYA WATANABE"], "JUNYA WATANABE"],
+  [["ALEXANDER DIGENOVA"], "ALEXANDER DIGENOVA"],
+  [["Y-PROJECT", "Y PROJECT"], "Y-PROJECT"],
+  [["GIVENCHY"], "GIVENCHY"],
+  [["GUCCI"], "GUCCI"],
+  [["MONCLER"], "MONCLER"],
+];
+
 function decodeHtml(value) {
   const namedEntities = {
     amp: "&",
@@ -69,31 +114,10 @@ function inferCategory(text) {
 
 function inferBrand(title) {
   const value = title.toUpperCase();
-  const brands = [
-    ["ENFANTS RICHES DEPRIMES", "ENFANTS RICHES DEPRIMES"],
-    ["HYSTERIC GLAMOUR", "HYSTERIC GLAMOUR"],
-    ["IF SIX WAS NINE", "IF SIX WAS NINE"],
-    ["SAINT LAURENT", "SAINT LAURENT"],
-    ["NUMBER NINE", "NUMBER (N)INE"],
-    ["NUMBER (N)INE", "NUMBER (N)INE"],
-    ["HOOD BY AIR", "HOOD BY AIR"],
-    ["NO FAITH STUDIOS", "NO FAITH STUDIOS"],
-    ["ISABEL MARANT", "ISABEL MARANT"],
-    ["RICK OWENS", "RICK OWENS"],
-    ["CHROME HEARTS", "CHROME HEARTS"],
-    ["Y-PROJECT", "Y-PROJECT"],
-    ["ALEXANDER DIGENOVA", "ALEXANDER DIGENOVA"],
-    ["PROTOCOL INDEX", "PROTOCOL INDEX"],
-    ["GIVENCHY", "GIVENCHY"],
-    ["UNDERCOVER", "UNDERCOVER"],
-    ["DIOR", "DIOR"],
-    ["LGB", "LGB"],
-    ["HBA", "HOOD BY AIR"],
-    ["9MICE", "9MICE"],
-  ];
+  const knownBrand = brandAliases.find(([aliases]) => aliases.some((alias) => value.includes(alias)))?.[1];
+  if (knownBrand) return knownBrand;
 
-  return brands.find(([needle]) => value.includes(needle))?.[1]
-    ?? title.replace(/^['"]|['"]$/g, "").split(/\s+/).slice(0, 2).join(" ");
+  return title.replace(/^[^A-ZА-Я0-9]+/i, "").split(/\s+/)[0] || "НЕИЗВЕСТНО";
 }
 
 function parseAmount(value) {
@@ -116,10 +140,7 @@ function parseTelegramProduct(html, messageId) {
   );
   const priceRub = parseAmount(rawText.match(/([\d\s.,]+)\s*₽/i)?.[1]);
 
-  const images = Array.from(
-    html.matchAll(/tgme_widget_message_photo_wrap[^>]*style="[^"]*background-image:url\('([^']+)'\)/gi),
-    (match) => decodeHtml(match[1]),
-  );
+  const images = extractTelegramImages(html);
 
   if (!title || images.length === 0 || (!priceByn && !priceRub)) return null;
 
@@ -134,24 +155,50 @@ function parseTelegramProduct(html, messageId) {
     price_byn: priceByn,
     price_rub: priceRub,
     contact: "@und3rme",
-    images: [...new Set(images)],
+    images,
     raw_text: rawText,
     created_at: createdAt,
   };
 }
 
-async function fetchTelegramPost(messageId) {
-  const response = await fetch(
-    `https://t.me/${telegramChannel}/${messageId}?embed=1&mode=tme`,
-    { headers: { "User-Agent": "UNDERBUY catalog backup/1.0" } },
-  );
+function extractTelegramImages(html) {
+  return [...new Set(Array.from(
+    html.matchAll(/tgme_widget_message_photo_wrap[^>]*style="[^"]*background-image:url\('([^']+)'\)/gi),
+    (match) => decodeHtml(match[1]),
+  ))];
+}
 
-  if (!response.ok) return { exists: false, product: null };
-  const html = await response.text();
-  return {
-    exists: html.includes(`data-post="${telegramChannel}/${messageId}"`),
-    product: parseTelegramProduct(html, messageId),
-  };
+async function fetchTelegramPost(messageId) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch(
+        `https://t.me/${telegramChannel}/${messageId}?embed=1&mode=tme`,
+        {
+          headers: { "User-Agent": "UNDERBUY catalog backup/1.0" },
+          signal: AbortSignal.timeout(15000),
+        },
+      );
+
+      if (response.status === 429 || response.status >= 500) {
+        if (attempt === 0) {
+          await new Promise((resolvePromise) => setTimeout(resolvePromise, 750));
+          continue;
+        }
+      }
+
+      if (!response.ok) return { exists: false, images: [], product: null };
+      const html = await response.text();
+      return {
+        exists: html.includes(`data-post="${telegramChannel}/${messageId}"`),
+        images: extractTelegramImages(html),
+        product: parseTelegramProduct(html, messageId),
+      };
+    } catch {
+      if (attempt === 0) continue;
+    }
+  }
+
+  return { exists: false, images: [], product: null };
 }
 
 async function findLatestTelegramId() {
@@ -266,11 +313,64 @@ async function readPreviousCatalog() {
   }
 }
 
+function hasImages(product) {
+  return Array.isArray(product?.images) && product.images.some(Boolean);
+}
+
+function hasReusableTelegramImages(product) {
+  return hasImages(product) && product.images.some((url) => /(?:telesco\.pe|telegram)/i.test(url));
+}
+
+async function enrichSupabaseCatalog(products, previousProducts) {
+  const previousImages = new Map(
+    previousProducts
+      .filter(hasReusableTelegramImages)
+      .map((product) => [String(product.telegram_message_id), product.images.filter(Boolean)]),
+  );
+
+  const enriched = products.map((product) => {
+    const title = product.title || product.name || "";
+    const cachedImages = previousImages.get(String(product.telegram_message_id)) || [];
+
+    return {
+      ...product,
+      brand: product.brand || inferBrand(title),
+      images: hasImages(product) ? product.images.filter(Boolean) : cachedImages,
+    };
+  });
+
+  const missingImages = enriched.filter((product) => !hasImages(product) && product.telegram_message_id);
+  if (missingImages.length === 0) return enriched;
+
+  console.log(`Restoring images for ${missingImages.length} products from Telegram…`);
+  let completed = 0;
+  const recovered = await mapWithConcurrency(missingImages, async (product) => {
+    const result = await fetchTelegramPost(product.telegram_message_id);
+    completed += 1;
+    if (completed % 100 === 0 || completed === missingImages.length) {
+      console.log(`Restored ${completed}/${missingImages.length} image sets`);
+    }
+    return [String(product.telegram_message_id), result.images];
+  });
+  const recoveredImages = new Map(recovered.filter(([, images]) => images.length > 0));
+
+  return enriched.map((product) => ({
+    ...product,
+    images: hasImages(product)
+      ? product.images
+      : recoveredImages.get(String(product.telegram_message_id)) || [],
+  }));
+}
+
 let source = "supabase";
 let products = [];
+const previousProducts = await readPreviousCatalog();
 
 try {
   products = await fetchSupabaseCatalog();
+  if (products.length > 0) {
+    products = await enrichSupabaseCatalog(products, previousProducts);
+  }
 } catch (error) {
   console.warn(`Supabase unavailable: ${error.message}`);
 }
@@ -286,7 +386,7 @@ if (products.length === 0) {
 
 if (products.length === 0) {
   source = "previous-cache";
-  products = await readPreviousCatalog();
+  products = previousProducts;
 }
 
 if (products.length === 0) {

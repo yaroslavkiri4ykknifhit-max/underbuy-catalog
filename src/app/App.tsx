@@ -65,12 +65,31 @@ const REVIEWS_MOCK = [
 ];
 
 const KNOWN_BRANDS = [
-  { keywords: ["ENFANTS RICHES DEPRIMES"], clean: "ENFANTS RICHES DEPRIMES" },
+  { keywords: ["ENFANTS RICHES DEPRIMES", "ENFANTS RICHES", "ENFATNS RICHES", "ERD"], clean: "ENFANTS RICHES DEPRIMES" },
+  { keywords: ["GRAILZ PROJECT", "GRAILZ"], clean: "GRAILZ PROJECT" },
   { keywords: ["HYSTERIC GLAMOUR"], clean: "HYSTERIC GLAMOUR" },
+  { keywords: ["THUG CLUB"], clean: "THUG CLUB" },
   { keywords: ["IF SIX WAS NINE"], clean: "IF SIX WAS NINE" },
   { keywords: ["SAINT LAURENT"], clean: "SAINT LAURENT" },
   { keywords: ["HOOD BY AIR", "HBA"], clean: "HOOD BY AIR" },
-  { keywords: ["NO FAITH STUDIOS"], clean: "NO FAITH STUDIOS" },
+  { keywords: ["NO FAITH STUDIOS", "NO FAITH"], clean: "NO FAITH STUDIOS" },
+  { keywords: ["PROTOCOL INDEX"], clean: "PROTOCOL INDEX" },
+  { keywords: ["ALICE HOLLYWOOD"], clean: "ALICE HOLLYWOOD" },
+  { keywords: ["MAISON MIHARA", "MIHARA YASUHIRO"], clean: "MAISON MIHARA YASUHIRO" },
+  { keywords: ["MELANIN ARCHIVE"], clean: "MELANIN ARCHIVE" },
+  { keywords: ["MOWALOLA"], clean: "MOWALOLA" },
+  { keywords: ["FAR ARCHIVE"], clean: "FAR ARCHIVE" },
+  { keywords: ["RACER WORLDWIDE"], clean: "RACER WORLDWIDE" },
+  { keywords: ["14TH ADDICTION"], clean: "14TH ADDICTION" },
+  { keywords: ["VIVIENNE WESTWOOD"], clean: "VIVIENNE WESTWOOD" },
+  { keywords: ["BEAUTY:BEAST"], clean: "BEAUTY:BEAST" },
+  { keywords: ["BALMAIN"], clean: "BALMAIN" },
+  { keywords: ["HELIOT EMIL"], clean: "HELIOT EMIL" },
+  { keywords: ["TORNADO MART"], clean: "TORNADO MART" },
+  { keywords: ["COMME DES GARCONS"], clean: "COMME DES GARCONS" },
+  { keywords: ["ACNE STUDIOS"], clean: "ACNE STUDIOS" },
+  { keywords: ["POST ARCHIVE FACTION"], clean: "POST ARCHIVE FACTION" },
+  { keywords: ["JUNYA WATANABE"], clean: "JUNYA WATANABE" },
   { keywords: ["ISABEL MARANT"], clean: "ISABEL MARANT" },
   { keywords: ["GIVENCHY"], clean: "GIVENCHY" },
   { keywords: ["DIOR"], clean: "DIOR" },
@@ -120,6 +139,17 @@ function stripTelegramFormatting(value: unknown): string {
     .trim();
 }
 
+function inferBrandFromTitle(title: string): string {
+  const upperTitle = title.toUpperCase();
+  for (const item of KNOWN_BRANDS) {
+    if (item.keywords.some((keyword) => upperTitle.includes(keyword))) {
+      return item.clean;
+    }
+  }
+
+  return title.replace(/^[^A-ZА-Я0-9]+/i, "").split(/\s+/)[0] || "НЕИЗВЕСТНО";
+}
+
 function normalizeProduct(row: any) {
   const title = stripTelegramFormatting(row.title ?? row.name ?? row.product_name ?? "Без названия");
   const images = Array.isArray(row.images)
@@ -138,7 +168,7 @@ function normalizeProduct(row: any) {
     ...row,
     id: row.id ?? row.telegram_message_id ?? title,
     name: title,
-    brand: cleanBrandName(row.brand),
+    brand: cleanBrandName(row.brand || inferBrandFromTitle(title)),
     category: stripTelegramFormatting(row.category).toUpperCase(),
     description: stripTelegramFormatting(rawDescription),
     images,
@@ -151,7 +181,7 @@ function normalizeProduct(row: any) {
   };
 }
 
-const CATALOG_CACHE_KEY = "underbuy_catalog_cache_v1";
+const CATALOG_CACHE_KEY = "underbuy_catalog_cache_v2";
 const SUPABASE_PAGE_SIZE = 500;
 
 function sortProducts(rows: any[]) {
@@ -178,6 +208,25 @@ function sortProducts(rows: any[]) {
   });
 
   return normalized;
+}
+
+function mergeCatalogProducts(liveProducts: any[], fallbackProducts: any[]) {
+  const fallbackByTelegramId = new Map(
+    fallbackProducts.map((product) => [String(product.telegram_message_id), product]),
+  );
+
+  return liveProducts.map((product) => {
+    const fallback = fallbackByTelegramId.get(String(product.telegram_message_id));
+    const images = product.images?.length ? product.images : fallback?.images || [];
+    const brand = product.brand !== "НЕИЗВЕСТНО" ? product.brand : fallback?.brand || product.brand;
+
+    return {
+      ...product,
+      brand,
+      images,
+      image_url: images[0] || product.image_url || fallback?.image_url || "",
+    };
+  });
 }
 
 function readSavedCatalog() {
@@ -527,7 +576,8 @@ export default function App() {
 
         if (cancelled) return;
 
-        const liveProducts = sortProducts(result || []);
+        const staticProducts = await staticCatalogPromise;
+        const liveProducts = mergeCatalogProducts(sortProducts(result || []), staticProducts);
         setProducts(liveProducts);
         saveCatalog(liveProducts);
         setCatalogNotice(null);
@@ -621,6 +671,12 @@ export default function App() {
     () => ["ВСЕ БРЕНДЫ", ...(Array.from(new Set(products.map((product) => product.brand).filter(Boolean))) as string[])],
     [products],
   );
+  const categoryOptions = useMemo(() => {
+    const availableCategories = Array.from(
+      new Set(products.map((product) => product.category).filter(Boolean)),
+    ) as string[];
+    return [...CATEGORIES, ...availableCategories.filter((category) => !CATEGORIES.includes(category))];
+  }, [products]);
 
   const getTelegramCheckoutUrl = (product: any) => {
     const message = `Привет, хочу заказать ${product.name}`;
@@ -750,7 +806,7 @@ export default function App() {
           <CustomSelect 
             label="КАТЕГОРИЯ" 
             value={activeCategory} 
-            options={CATEGORIES} 
+            options={categoryOptions}
             onChange={(val) => {
               setActiveCategory(val);
               setIsAdminOpen(false);
@@ -1228,7 +1284,7 @@ export default function App() {
               const activePdpImage = pdpImages[activePdpImageIndex] || pdpImages[0];
               return (
                 <>
-                  <img 
+                  <ImageWithFallback
                     src={activePdpImage} 
                     alt={selectedProduct.name}
                     className={`w-full h-full object-cover absolute inset-0 ${selectedProduct.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
@@ -1360,7 +1416,7 @@ export default function App() {
                         }}
                         className="w-24 aspect-[3/4] bg-gray-100 shrink-0 overflow-hidden cursor-pointer"
                       >
-                        <img src={productImg} alt={product.name} className="w-full h-full object-cover" />
+                        <ImageWithFallback src={productImg} alt={product.name} className="w-full h-full object-cover" />
                       </button>
                       <div className="flex-1 flex flex-col justify-between py-1 min-w-0">
                         <div className="flex justify-between gap-3 items-start">
