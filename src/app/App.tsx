@@ -1148,7 +1148,7 @@ export default function App() {
                               src={productImg} 
                               alt={product.name} 
                               loading="lazy"
-                              className={`w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035] ${product.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
+                              className={`w-full h-full object-contain transition-opacity duration-300 group-hover:opacity-90 ${product.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
                             />
                             <button
                               type="button"
@@ -1287,7 +1287,7 @@ export default function App() {
                   <ImageWithFallback
                     src={activePdpImage} 
                     alt={selectedProduct.name}
-                    className={`w-full h-full object-cover absolute inset-0 ${selectedProduct.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
+                    className={`w-full h-full object-contain absolute inset-0 ${selectedProduct.name === 'STRUCTURE SHIRT' ? 'grayscale' : ''}`}
                   />
                   {pdpImages.length > 1 && (
                     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10 bg-white/80 backdrop-blur-sm px-3 py-2 border border-black/10">
@@ -1416,7 +1416,7 @@ export default function App() {
                         }}
                         className="w-24 aspect-[3/4] bg-gray-100 shrink-0 overflow-hidden cursor-pointer"
                       >
-                        <ImageWithFallback src={productImg} alt={product.name} className="w-full h-full object-cover" />
+                        <ImageWithFallback src={productImg} alt={product.name} className="w-full h-full object-contain" />
                       </button>
                       <div className="flex-1 flex flex-col justify-between py-1 min-w-0">
                         <div className="flex justify-between gap-3 items-start">
