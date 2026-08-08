@@ -12,7 +12,7 @@ export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElemen
   if (didError || !hasSource) {
     return (
       <div
-        className={`inline-flex bg-[#f3f3f3] text-center align-middle items-center justify-center ${className ?? ""}`}
+        className={`inline-flex bg-white text-center align-middle items-center justify-center ${className ?? ""}`}
         style={style}
         role="img"
         aria-label={alt || "Изображение товара недоступно"}
