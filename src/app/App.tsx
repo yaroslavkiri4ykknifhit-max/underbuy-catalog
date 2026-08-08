@@ -1150,7 +1150,7 @@ export default function App() {
                           key={product.id}
                           className={`${spanClass} catalog-product group flex flex-col gap-2`}
                         >
-                          <div className={`product-frame relative overflow-hidden w-full ${aspectClass} bg-white`}>
+                          <div className={`relative overflow-hidden w-full ${aspectClass} bg-white`}>
                             <ImageWithFallback
                               src={productImg} 
                               alt={product.name} 
