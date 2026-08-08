@@ -1139,7 +1139,7 @@ export default function App() {
                     )}
                   </div>
                 ) : (
-                  <div className="catalog-grid grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-x-3 md:gap-x-6 gap-y-10 md:gap-y-16">
+                  <div className="catalog-grid grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-x-4 md:gap-x-7 gap-y-12 md:gap-y-16">
                     {filteredProducts.map((product) => {
                       const productImg = (product.images && product.images.length > 0) ? product.images[0] : (product.image_url || product.img);
                       const aspectClass = product.aspect || "aspect-[3/4]";
@@ -1148,7 +1148,7 @@ export default function App() {
                       return (
                         <article
                           key={product.id}
-                          className={`${spanClass} catalog-product group flex flex-col gap-3`}
+                          className={`${spanClass} catalog-product group flex flex-col gap-2`}
                         >
                           <div className={`relative overflow-hidden w-full ${aspectClass} bg-white`}>
                             <ImageWithFallback
@@ -1194,7 +1194,7 @@ export default function App() {
                                 setSelectedProduct(product);
                               }
                             }}
-                            className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 pt-1 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-4"
+                            className="flex flex-1 flex-col justify-between md:flex-row md:items-start gap-3 bg-[#f6f6f6] px-3 py-3.5 cursor-pointer outline-none transition-colors hover:bg-[#f1f1f1] focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
                           >
                             <div className="flex flex-col gap-1 min-w-0">
                               {product.brand && (

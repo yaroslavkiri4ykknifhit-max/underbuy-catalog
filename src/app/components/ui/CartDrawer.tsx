@@ -82,7 +82,7 @@ export function PriceDisplay({
   } else if (size === "lg") {
     mainSize = "text-[26px] md:text-[32px]";
   } else if (size === "sm") {
-    mainSize = "text-base md:text-[17px]";
+    mainSize = "text-[14px] md:text-[15px]";
   }
 
   const formatExactAmount = (amount: string | number) => {
@@ -102,7 +102,7 @@ export function PriceDisplay({
 
   return (
     <div className={`flex flex-col ${alignClass} shrink-0`}>
-      <div className={`price-text ${mainSize} text-black leading-none flex flex-wrap items-baseline ${justifyClass} gap-x-2 gap-y-1`}>
+      <div className={`price-text ${mainSize} text-black leading-none flex flex-nowrap whitespace-nowrap items-baseline ${justifyClass} gap-x-1`}>
         <span className="inline-flex items-baseline">
           <span>{bynText}</span>
           <BynLogo />
