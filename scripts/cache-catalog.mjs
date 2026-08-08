@@ -1,9 +1,10 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const outputPath = resolve(scriptDirectory, "../public/products-cache.json");
+const publicDirectory = resolve(scriptDirectory, "../public");
+const outputPath = resolve(publicDirectory, "products-cache.json");
 const supabaseUrl = (
   process.env.VITE_SUPABASE_URL || "https://vwwwbndppuevwumnyvlj.supabase.co"
 ).replace(/\/$/, "");
@@ -317,16 +318,62 @@ function hasImages(product) {
   return Array.isArray(product?.images) && product.images.some(Boolean);
 }
 
-function hasReusableTelegramImages(product) {
-  return hasImages(product) && product.images.some((url) => /(?:telesco\.pe|telegram)/i.test(url));
+function isLocalImagePath(url) {
+  return typeof url === "string" && url.startsWith("product-images/");
+}
+
+async function findReusableLocalImages(product) {
+  if (!hasImages(product) || !product.images.every(isLocalImagePath)) return [];
+
+  for (const imagePath of product.images) {
+    try {
+      await access(resolve(publicDirectory, imagePath));
+    } catch {
+      return [];
+    }
+  }
+
+  return product.images;
+}
+
+function extensionForContentType(contentType) {
+  if (contentType?.includes("png")) return "png";
+  if (contentType?.includes("webp")) return "webp";
+  return "jpg";
+}
+
+async function cacheTelegramImages(messageId, sourceUrls) {
+  const productDirectory = `product-images/${messageId}`;
+  await mkdir(resolve(publicDirectory, productDirectory), { recursive: true });
+
+  const localImages = [];
+  for (let index = 0; index < sourceUrls.length; index += 1) {
+    try {
+      const response = await fetch(sourceUrls[index], {
+        headers: { "User-Agent": "UNDERBUY catalog backup/1.0" },
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!response.ok) continue;
+
+      const extension = extensionForContentType(response.headers.get("content-type"));
+      const relativePath = `${productDirectory}/photo_${index}.${extension}`;
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      await writeFile(resolve(publicDirectory, relativePath), bytes);
+      localImages.push(relativePath);
+    } catch {
+      // A fresh Telegram URL remains a temporary fallback if one download fails.
+    }
+  }
+
+  return localImages;
 }
 
 async function enrichSupabaseCatalog(products, previousProducts) {
-  const previousImages = new Map(
-    previousProducts
-      .filter(hasReusableTelegramImages)
-      .map((product) => [String(product.telegram_message_id), product.images.filter(Boolean)]),
-  );
+  const reusableEntries = await mapWithConcurrency(previousProducts, async (product) => {
+    const images = await findReusableLocalImages(product);
+    return images.length > 0 ? [String(product.telegram_message_id), images] : null;
+  });
+  const previousImages = new Map(reusableEntries.filter(Boolean));
 
   const enriched = products.map((product) => {
     const title = product.title || product.name || "";
@@ -346,11 +393,15 @@ async function enrichSupabaseCatalog(products, previousProducts) {
   let completed = 0;
   const recovered = await mapWithConcurrency(missingImages, async (product) => {
     const result = await fetchTelegramPost(product.telegram_message_id);
+    const localImages = await cacheTelegramImages(product.telegram_message_id, result.images);
     completed += 1;
     if (completed % 100 === 0 || completed === missingImages.length) {
       console.log(`Restored ${completed}/${missingImages.length} image sets`);
     }
-    return [String(product.telegram_message_id), result.images];
+    return [
+      String(product.telegram_message_id),
+      localImages.length > 0 ? localImages : result.images,
+    ];
   });
   const recoveredImages = new Map(recovered.filter(([, images]) => images.length > 0));
 

@@ -139,6 +139,13 @@ function stripTelegramFormatting(value: unknown): string {
     .trim();
 }
 
+function resolveProductImage(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "";
+  const imageUrl = value.trim();
+  if (/^(?:https?:|data:|blob:|\/)/i.test(imageUrl)) return imageUrl;
+  return `${import.meta.env.BASE_URL}${imageUrl.replace(/^\.\//, "")}`;
+}
+
 function inferBrandFromTitle(title: string): string {
   const upperTitle = title.toUpperCase();
   for (const item of KNOWN_BRANDS) {
@@ -153,11 +160,11 @@ function inferBrandFromTitle(title: string): string {
 function normalizeProduct(row: any) {
   const title = stripTelegramFormatting(row.title ?? row.name ?? row.product_name ?? "Без названия");
   const images = Array.isArray(row.images)
-    ? row.images.filter(Boolean)
+    ? row.images.map(resolveProductImage).filter(Boolean)
     : row.image_url
-      ? [row.image_url]
+      ? [resolveProductImage(row.image_url)]
       : row.img
-        ? [row.img]
+        ? [resolveProductImage(row.img)]
         : [];
   // The restored Telegram catalog keeps the source message in raw_text. It is
   // useful for auditing, but contains markup, delivery links and contact data,
