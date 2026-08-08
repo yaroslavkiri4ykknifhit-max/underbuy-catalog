@@ -1150,7 +1150,7 @@ export default function App() {
                           key={product.id}
                           className={`${spanClass} catalog-product group flex flex-col gap-2`}
                         >
-                          <div className={`relative overflow-hidden w-full ${aspectClass} bg-white`}>
+                          <div className={`product-frame relative overflow-hidden w-full ${aspectClass} bg-white`}>
                             <ImageWithFallback
                               src={productImg} 
                               alt={product.name} 
@@ -1194,7 +1194,7 @@ export default function App() {
                                 setSelectedProduct(product);
                               }
                             }}
-                            className="flex flex-1 flex-col justify-between md:flex-row md:items-start gap-3 bg-[#f6f6f6] px-3 py-3.5 cursor-pointer outline-none transition-colors hover:bg-[#f1f1f1] focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+                            className="flex flex-1 flex-col justify-between md:flex-row md:items-start gap-3 pt-2 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-4"
                           >
                             <div className="flex flex-col gap-1 min-w-0">
                               {product.brand && (
