@@ -1139,7 +1139,7 @@ export default function App() {
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-x-3 md:gap-x-6 gap-y-10 md:gap-y-16">
+                  <div className="catalog-grid grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-x-3 md:gap-x-6 gap-y-10 md:gap-y-16">
                     {filteredProducts.map((product) => {
                       const productImg = (product.images && product.images.length > 0) ? product.images[0] : (product.image_url || product.img);
                       const aspectClass = product.aspect || "aspect-[3/4]";
