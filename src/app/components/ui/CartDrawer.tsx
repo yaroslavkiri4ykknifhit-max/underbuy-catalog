@@ -55,7 +55,7 @@ export const formatPrice = (amount: number) => {
 
 export function BynLogo() {
   return (
-    <span className="ml-1 text-[0.85em] font-extrabold tracking-tight">BYN</span>
+    <span className="ml-1 font-extrabold tracking-tight">BYN</span>
   );
 }
 
@@ -73,19 +73,16 @@ export function PriceDisplay({
   align?: "start" | "end" | "center"; 
 }) {
   const alignClass = align === "start" ? "items-start text-left" : align === "center" ? "items-center text-center" : "items-end text-right";
+  const justifyClass = align === "start" ? "justify-start" : align === "center" ? "justify-center" : "justify-end";
   
   let mainSize = "text-[14px]";
-  let subSize = "text-[11px]";
   
   if (size === "md") {
     mainSize = "text-[17px] md:text-[20px]";
-    subSize = "text-[12px] md:text-[14px]";
   } else if (size === "lg") {
     mainSize = "text-[26px] md:text-[32px]";
-    subSize = "text-[16px] md:text-[18px]";
   } else if (size === "sm") {
     mainSize = "text-base md:text-[17px]";
-    subSize = "text-xs md:text-[13px]";
   }
 
   const formatExactAmount = (amount: string | number) => {
@@ -105,13 +102,14 @@ export function PriceDisplay({
 
   return (
     <div className={`flex flex-col ${alignClass} shrink-0`}>
-      <span className={`price-text ${mainSize} text-black leading-none inline-flex items-center`}>
-        <span>{bynText}</span>
-        <BynLogo />
-      </span>
-      <span className={`price-text ${subSize} text-black/50 mt-1 leading-none`}>
-        {rubText}
-      </span>
+      <div className={`price-text ${mainSize} text-black leading-none flex flex-wrap items-baseline ${justifyClass} gap-x-2 gap-y-1`}>
+        <span className="inline-flex items-baseline">
+          <span>{bynText}</span>
+          <BynLogo />
+        </span>
+        <span className="text-black/30" aria-hidden="true">/</span>
+        <span>{rubText}</span>
+      </div>
     </div>
   );
 }
