@@ -84,8 +84,8 @@ export function PriceDisplay({
     mainSize = "text-[26px] md:text-[32px]";
     subSize = "text-[16px] md:text-[18px]";
   } else if (size === "sm") {
-    mainSize = "text-[14px] md:text-[15px]";
-    subSize = "text-[11px] md:text-[12px]";
+    mainSize = "text-base md:text-[17px]";
+    subSize = "text-xs md:text-[13px]";
   }
 
   const formatExactAmount = (amount: string | number) => {

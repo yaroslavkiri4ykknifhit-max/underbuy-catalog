@@ -385,13 +385,13 @@ function CustomSelect({
 
   return (
     <div ref={containerRef} className="relative flex-1 flex flex-col gap-1 min-w-[100px]">
-      <span className="text-[8px] tracking-[0.2em] text-gray-400 font-extrabold hidden md:block">
+      <span className="text-[9px] tracking-[0.12em] text-gray-500 font-bold hidden md:block">
         {label}
       </span>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-white border border-black px-3 py-2.5 text-[9px] tracking-[0.2em] font-extrabold uppercase flex justify-between items-center cursor-pointer select-none rounded-none text-left"
+        className="w-full bg-white border border-black px-3.5 py-3 text-[11px] md:text-xs tracking-[0.1em] font-bold uppercase flex justify-between items-center cursor-pointer select-none rounded-none text-left"
       >
         <span className="truncate mr-2">{value}</span>
         <ChevronDown strokeWidth={1.5} className={`w-3.5 h-3.5 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -407,7 +407,7 @@ function CustomSelect({
                 onChange(opt);
                 setIsOpen(false);
               }}
-              className={`w-full px-3 py-2.5 text-[9px] tracking-[0.2em] font-extrabold text-left uppercase transition-colors rounded-none border-b border-gray-100 last:border-0 ${
+              className={`w-full px-3.5 py-3 text-[11px] md:text-xs tracking-[0.08em] font-bold text-left uppercase transition-colors rounded-none border-b border-gray-100 last:border-0 ${
                 value === opt 
                   ? "bg-black text-white" 
                   : "bg-white text-black hover:bg-gray-100"
@@ -442,13 +442,13 @@ function ReviewCard({
               <span key={i} className="text-xs">★</span>
             ))}
           </div>
-          <span className="text-[9px] tracking-[0.1em] text-gray-400 font-extrabold uppercase">{date}</span>
+          <span className="text-[10px] tracking-[0.04em] text-gray-500 font-semibold">{date}</span>
         </div>
-        <p className="text-[10px] tracking-[0.05em] leading-relaxed text-gray-700 normal-case font-medium">
+        <p className="text-xs tracking-[-0.01em] leading-[1.65] text-gray-700 normal-case font-medium">
           {text}
         </p>
       </div>
-      <span className="text-[10px] tracking-[0.1em] font-extrabold uppercase">{author}</span>
+      <span className="text-[11px] tracking-[0.06em] font-bold uppercase">{author}</span>
     </div>
   );
 }
@@ -468,14 +468,14 @@ function FaqItem({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex justify-between items-center p-4 text-left cursor-pointer transition-colors hover:bg-gray-50"
       >
-        <span className="text-[11px] tracking-[0.1em] font-black uppercase pr-4">{question}</span>
+        <span className="text-[13px] tracking-[-0.01em] leading-snug font-bold normal-case pr-4">{question}</span>
         <ChevronDown 
           strokeWidth={1.5} 
           className={`w-4 h-4 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} 
         />
       </button>
       <div className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-[500px] border-t border-black p-4" : "max-h-0"}`}>
-        <p className="text-[10px] tracking-[0.05em] text-gray-600 uppercase leading-relaxed font-bold">
+        <p className="text-xs tracking-[-0.01em] text-gray-600 normal-case leading-[1.65] font-medium">
           {answer}
         </p>
       </div>
@@ -735,7 +735,7 @@ export default function App() {
   }), [activeBrand, activeCategory, products, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-white text-black selection:bg-black selection:text-white font-sans uppercase">
+    <div className="min-h-screen bg-white text-black selection:bg-black selection:text-white font-sans antialiased">
       <Toaster position="top-center" richColors />
 
       {/* Header */}
@@ -748,7 +748,7 @@ export default function App() {
               placeholder="ПОИСК ТОВАРА..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent text-xs tracking-[0.2em] focus:outline-none placeholder:text-gray-300 py-1"
+              className="w-full bg-transparent text-[13px] tracking-[0.04em] font-medium focus:outline-none placeholder:text-gray-400 py-1"
               autoFocus
             />
             <button 
@@ -841,9 +841,9 @@ export default function App() {
               <div className="flex justify-between items-center border-b border-gray-100 pb-2">
                 <div className="flex items-center gap-2 text-black">
                   <Compass strokeWidth={1.5} className="w-4 h-4 shrink-0" />
-                  <span className="text-[11px] md:text-xs tracking-[0.2em] font-extrabold uppercase">НАВИГАЦИЯ ПО ИНФО</span>
+                  <span className="text-xs md:text-[13px] tracking-[0.1em] font-bold uppercase">НАВИГАЦИЯ ПО ИНФО</span>
                 </div>
-                <span className="text-[8px] tracking-[0.15em] text-gray-400 font-extrabold uppercase hidden sm:inline">ВЫБЕРИТЕ РАЗДЕЛ</span>
+                <span className="text-[10px] tracking-[0.08em] text-gray-500 font-semibold uppercase hidden sm:inline">ВЫБЕРИТЕ РАЗДЕЛ</span>
               </div>
               
               <div className="flex flex-col gap-2">
@@ -851,7 +851,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setInfoSubTab("order")}
-                  className={`w-full py-2.5 px-3.5 border text-[10px] md:text-[11px] tracking-[0.15em] font-extrabold uppercase flex justify-between items-center transition-all cursor-pointer ${
+                  className={`w-full py-3 px-3.5 border text-[11px] md:text-xs tracking-[0.08em] font-bold uppercase flex justify-between items-center transition-all cursor-pointer ${
                     infoSubTab === "order"
                       ? "bg-black text-white border-black shadow-sm"
                       : "bg-white text-black border-black hover:bg-gray-50"
@@ -861,14 +861,14 @@ export default function App() {
                     <ShoppingBag className="w-4 h-4 shrink-0" />
                     <span>1. КАК СДЕЛАТЬ ЗАКАЗ</span>
                   </div>
-                  {infoSubTab === "order" && <span className="text-[8px] tracking-[0.2em] bg-white text-black px-2 py-0.5 font-black">ВЫБРАНО</span>}
+                  {infoSubTab === "order" && <span className="text-[9px] tracking-[0.08em] bg-white text-black px-2 py-0.5 font-bold">ВЫБРАНО</span>}
                 </button>
 
                 {/* 2. ОТЗЫВЫ */}
                 <button
                   type="button"
                   onClick={() => setInfoSubTab("reviews")}
-                  className={`w-full py-2.5 px-3.5 border text-[10px] md:text-[11px] tracking-[0.15em] font-extrabold uppercase flex justify-between items-center transition-all cursor-pointer ${
+                  className={`w-full py-3 px-3.5 border text-[11px] md:text-xs tracking-[0.08em] font-bold uppercase flex justify-between items-center transition-all cursor-pointer ${
                     infoSubTab === "reviews"
                       ? "bg-black text-white border-black shadow-sm"
                       : "bg-white text-black border-black hover:bg-gray-50"
@@ -879,8 +879,8 @@ export default function App() {
                     <span>2. ОТЗЫВЫ</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-[9px] tracking-[0.1em] font-black ${infoSubTab === "reviews" ? "text-white" : "text-gray-500"}`}>★ 5.0</span>
-                    {infoSubTab === "reviews" && <span className="text-[8px] tracking-[0.2em] bg-white text-black px-2 py-0.5 font-black">ВЫБРАНО</span>}
+                    <span className={`text-[10px] tracking-[0.04em] font-bold ${infoSubTab === "reviews" ? "text-white" : "text-gray-500"}`}>★ 5.0</span>
+                    {infoSubTab === "reviews" && <span className="text-[9px] tracking-[0.08em] bg-white text-black px-2 py-0.5 font-bold">ВЫБРАНО</span>}
                   </div>
                 </button>
 
@@ -888,7 +888,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setInfoSubTab("faq")}
-                  className={`w-full py-2.5 px-3.5 border text-[10px] md:text-[11px] tracking-[0.15em] font-extrabold uppercase flex justify-between items-center transition-all cursor-pointer ${
+                  className={`w-full py-3 px-3.5 border text-[11px] md:text-xs tracking-[0.08em] font-bold uppercase flex justify-between items-center transition-all cursor-pointer ${
                     infoSubTab === "faq"
                       ? "bg-black text-white border-black shadow-sm"
                       : "bg-white text-black border-black hover:bg-gray-50"
@@ -898,7 +898,7 @@ export default function App() {
                     <HelpCircle className="w-4 h-4 shrink-0" />
                     <span>3. ЧАСТО ЗАДАВАЕМЫЕ ВОПРОСЫ</span>
                   </div>
-                  {infoSubTab === "faq" && <span className="text-[8px] tracking-[0.2em] bg-white text-black px-2 py-0.5 font-black">ВЫБРАНО</span>}
+                  {infoSubTab === "faq" && <span className="text-[9px] tracking-[0.08em] bg-white text-black px-2 py-0.5 font-bold">ВЫБРАНО</span>}
                 </button>
               </div>
             </div>
@@ -908,34 +908,34 @@ export default function App() {
               {/* 1. КАК ОФОРМИТЬ ЗАКАЗ */}
               {infoSubTab === "order" && (
                 <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-                  <h2 className="text-xs md:text-sm tracking-[0.2em] font-extrabold uppercase border-b border-black pb-2">КАК СДЕЛАТЬ ЗАКАЗ</h2>
+                  <h2 className="text-sm md:text-base tracking-[0.08em] font-bold uppercase border-b border-black pb-2">КАК СДЕЛАТЬ ЗАКАЗ</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="flex gap-4 items-start border border-black p-4 bg-white">
                       <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">1</div>
                       <div>
-                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Выбор вещи</h3>
-                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Выберите понравившуюся вещь в каталоге и откройте карточку товара</p>
+                        <h3 className="text-[13px] tracking-[-0.01em] font-bold">Выбор вещи</h3>
+                        <p className="text-xs tracking-[-0.01em] text-gray-600 mt-1 normal-case leading-[1.6] font-medium">Выберите понравившуюся вещь в каталоге и откройте карточку товара</p>
                       </div>
                     </div>
                     <div className="flex gap-4 items-start border border-black p-4 bg-white">
                       <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">2</div>
                       <div>
-                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оформление</h3>
-                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Нажмите «Перейти к оформлению» — откроется Telegram с готовым сообщением менеджеру</p>
+                        <h3 className="text-[13px] tracking-[-0.01em] font-bold">Оформление</h3>
+                        <p className="text-xs tracking-[-0.01em] text-gray-600 mt-1 normal-case leading-[1.6] font-medium">Нажмите «Перейти к оформлению» — откроется Telegram с готовым сообщением менеджеру</p>
                       </div>
                     </div>
                     <div className="flex gap-4 items-start border border-black p-4 bg-white">
                       <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">3</div>
                       <div>
-                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Доставка</h3>
-                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">После того как вы свяжетесь с менеджером, он ответит на все ваши вопросы, предоставит размерную таблицу, а также предложит два вида доставки на выбор: авиа или авто — и рассчитает полную стоимость вашего заказа</p>
+                        <h3 className="text-[13px] tracking-[-0.01em] font-bold">Доставка</h3>
+                        <p className="text-xs tracking-[-0.01em] text-gray-600 mt-1 normal-case leading-[1.6] font-medium">После того как вы свяжетесь с менеджером, он ответит на все ваши вопросы, предоставит размерную таблицу, а также предложит два вида доставки на выбор: авиа или авто — и рассчитает полную стоимость вашего заказа</p>
                       </div>
                     </div>
                     <div className="flex gap-4 items-start border border-black p-4 bg-white">
                       <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">4</div>
                       <div>
-                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оплата</h3>
-                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">После подтверждения заказа мы направим вам реквизиты для оплаты. Принимаем: Карты РФ / Карты РБ / Карты банков стран СНГ / Крипта</p>
+                        <h3 className="text-[13px] tracking-[-0.01em] font-bold">Оплата</h3>
+                        <p className="text-xs tracking-[-0.01em] text-gray-600 mt-1 normal-case leading-[1.6] font-medium">После подтверждения заказа мы направим вам реквизиты для оплаты. Принимаем: Карты РФ / Карты РБ / Карты банков стран СНГ / Крипта</p>
                       </div>
                     </div>
                   </div>
@@ -946,10 +946,10 @@ export default function App() {
               {infoSubTab === "reviews" && (
                 <div className="flex flex-col gap-6 animate-in fade-in duration-200">
                   <div className="flex justify-between items-center border-b border-black pb-2">
-                    <h2 className="text-xs md:text-sm tracking-[0.2em] font-extrabold uppercase">ОТЗЫВЫ ПОКУПАТЕЛЕЙ</h2>
+                    <h2 className="text-sm md:text-base tracking-[0.08em] font-bold uppercase">ОТЗЫВЫ ПОКУПАТЕЛЕЙ</h2>
                     <div className="flex items-center gap-1.5 select-none">
                       <span className="text-xs">★</span>
-                      <span className="text-[10px] tracking-[0.1em] font-extrabold">5.0</span>
+                      <span className="text-xs tracking-[0.02em] font-bold">5.0</span>
                     </div>
                   </div>
 
@@ -960,9 +960,9 @@ export default function App() {
                         <ExternalLink className="w-5 h-5" />
                       </div>
                       <div>
-                        <span className="text-[9px] tracking-[0.2em] text-gray-400 font-extrabold block">TELEGRAM КАНАЛ С ОТЗЫВАМИ</span>
-                        <h3 className="text-xs md:text-sm tracking-[0.15em] font-extrabold uppercase mt-0.5">@UND3RREVIEW</h3>
-                        <p className="text-[10px] tracking-[0.05em] text-gray-300 font-medium normal-case mt-1">
+                        <span className="text-[10px] tracking-[0.1em] text-gray-400 font-bold block">TELEGRAM КАНАЛ С ОТЗЫВАМИ</span>
+                        <h3 className="text-sm md:text-base tracking-[0.06em] font-bold uppercase mt-0.5">@UND3RREVIEW</h3>
+                        <p className="text-xs tracking-[-0.01em] leading-[1.55] text-gray-300 font-medium normal-case mt-1">
                           Смотрите ещё больше живых фотоотчетов и отзывов наших клиентов в официальном канале!
                         </p>
                       </div>
@@ -971,7 +971,7 @@ export default function App() {
                       href="https://t.me/und3rreview"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full md:w-auto bg-white text-black border border-white px-5 py-3 text-[10px] tracking-[0.2em] font-extrabold uppercase hover:bg-gray-200 transition-colors shrink-0 flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full md:w-auto bg-white text-black border border-white px-5 py-3 text-xs tracking-[0.08em] font-bold uppercase hover:bg-gray-200 transition-colors shrink-0 flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <span>ПЕРЕЙТИ В КАНАЛ @UND3RREVIEW</span>
                       <ExternalLink className="w-3.5 h-3.5" />
@@ -995,7 +995,7 @@ export default function App() {
               {/* 3. ЧАСТО ЗАДАВАЕМЫЕ ВОПРОСЫ (FAQ) */}
               {infoSubTab === "faq" && (
                 <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-                  <h2 className="text-xs md:text-sm tracking-[0.2em] font-extrabold uppercase border-b border-black pb-2">ЧАСТО ЗАДАВАЕМЫЕ ВОПРОСЫ</h2>
+                  <h2 className="text-sm md:text-base tracking-[0.08em] font-bold uppercase border-b border-black pb-2">ЧАСТО ЗАДАВАЕМЫЕ ВОПРОСЫ</h2>
                   <div className="flex flex-col gap-4 max-w-3xl">
                     <FaqItem 
                       question="ЧЕМ НАШ МАГАЗИН ЛУЧШЕ ДРУГИХ?" 
@@ -1042,10 +1042,10 @@ export default function App() {
           <div className="animate-in fade-in duration-300">
             <section className="flex items-end justify-between gap-6 py-4 md:py-5 border-b border-black mb-6">
               <div className="max-w-2xl">
-                <h1 className="text-[clamp(2rem,4.5vw,3.75rem)] leading-[0.88] tracking-[-0.06em] font-black">
+                <h1 className="text-[clamp(2.25rem,4.5vw,3.75rem)] leading-[0.92] tracking-[-0.045em] font-extrabold">
                   КАТАЛОГ
                 </h1>
-                <p className="mt-3 text-[9px] md:text-[10px] tracking-[0.16em] text-gray-500 font-bold leading-relaxed">
+                <p className="mt-3 text-[11px] md:text-xs tracking-[0.07em] text-gray-600 font-semibold leading-[1.55]">
                   ВЫБЕРИТЕ ВЕЩЬ — ОФОРМЛЕНИЕ ЗАКАЗА ОТКРОЕТСЯ В TELEGRAM
                 </p>
               </div>
@@ -1053,7 +1053,7 @@ export default function App() {
                 <span className="block text-xl md:text-3xl font-black tracking-[-0.05em] leading-none">
                   {isProductsLoading ? "—" : filteredProducts.length}
                 </span>
-                <span className="block mt-1 text-[8px] tracking-[0.18em] text-gray-400 font-extrabold">
+                <span className="block mt-1 text-[10px] tracking-[0.1em] text-gray-500 font-bold">
                   ПОЗИЦИЙ
                 </span>
               </div>
@@ -1198,10 +1198,10 @@ export default function App() {
                           >
                             <div className="flex flex-col gap-1 min-w-0">
                               {product.brand && (
-                                <span className="text-[9px] tracking-[0.2em] text-gray-400 font-extrabold">{product.brand}</span>
+                                <span className="text-[10px] md:text-[11px] tracking-[0.1em] text-gray-500 font-bold leading-[1.35] uppercase">{product.brand}</span>
                               )}
-                              <h2 className="text-[11px] md:text-xs tracking-[0.06em] font-extrabold normal-case leading-snug">{product.name}</h2>
-                              <p className="text-[10px] tracking-[0.1em] text-gray-500 font-bold">{product.category}</p>
+                              <h2 className="text-[13px] md:text-sm tracking-[-0.015em] font-bold normal-case leading-[1.35]">{product.name}</h2>
+                              <p className="text-[11px] md:text-xs tracking-[0.05em] text-gray-600 font-semibold uppercase">{product.category}</p>
                             </div>
                             <PriceDisplay
                               price={product.price}
@@ -1320,14 +1320,14 @@ export default function App() {
               
               <div>
                 {selectedProduct.brand && (
-                  <span className="text-[10px] tracking-[0.3em] text-gray-400 font-extrabold block mb-1">
+                  <span className="text-[11px] tracking-[0.14em] text-gray-500 font-bold block mb-1 uppercase">
                     {selectedProduct.brand}
                   </span>
                 )}
-                <h1 className="text-2xl md:text-4xl font-extrabold tracking-tighter leading-none mb-2">
+                <h1 className="text-[26px] md:text-[40px] font-extrabold tracking-[-0.035em] leading-[1.05] normal-case mb-2">
                   {selectedProduct.name}
                 </h1>
-                <p className="text-xs tracking-[0.2em] text-gray-500 font-bold">
+                <p className="text-[13px] tracking-[0.08em] text-gray-600 font-semibold uppercase">
                   {selectedProduct.category}
                 </p>
               </div>
@@ -1341,7 +1341,7 @@ export default function App() {
               />
 
               {selectedProduct.description && (
-                <p className="text-xs leading-relaxed text-gray-600 normal-case">
+                <p className="text-sm leading-[1.65] text-gray-600 normal-case">
                   {selectedProduct.description}
                 </p>
               )}
@@ -1362,7 +1362,7 @@ export default function App() {
                   href={getTelegramCheckoutUrl(selectedProduct)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full bg-black text-white border border-black py-4 text-xs tracking-[0.15em] transition-colors flex items-center justify-center gap-3 group cursor-pointer hover:bg-gray-800"
+                  className="w-full bg-black text-white border border-black py-4 text-[13px] tracking-[0.07em] font-bold transition-colors flex items-center justify-center gap-3 group cursor-pointer hover:bg-gray-800"
                 >
                   <span>ПЕРЕЙТИ К ОФОРМЛЕНИЮ</span>
                   <ExternalLink strokeWidth={1} className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -1387,7 +1387,7 @@ export default function App() {
           />
           <div className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col z-10">
             <header className="h-[66px] md:h-[74px] px-6 flex justify-between items-center border-b border-gray-200">
-              <h2 className="text-sm tracking-[0.2em] font-medium">ИЗБРАННОЕ</h2>
+              <h2 className="text-base tracking-[0.08em] font-bold">ИЗБРАННОЕ</h2>
               <button
                 type="button"
                 onClick={() => setIsFavoritesOpen(false)}
@@ -1400,11 +1400,11 @@ export default function App() {
             {favoriteProducts.length === 0 ? (
               <div className="flex-1 flex flex-col justify-center items-center p-6 gap-5 text-center">
                 <Heart strokeWidth={1} className="w-9 h-9 text-gray-300" />
-                <p className="text-[10px] tracking-[0.25em] text-gray-400">В ИЗБРАННОМ ПОКА ПУСТО</p>
+                <p className="text-xs tracking-[0.08em] text-gray-500 font-medium">В ИЗБРАННОМ ПОКА ПУСТО</p>
                 <button
                   type="button"
                   onClick={() => setIsFavoritesOpen(false)}
-                  className="border border-black px-6 py-3 text-[10px] tracking-[0.2em] hover:bg-black hover:text-white transition-colors cursor-pointer"
+                  className="border border-black px-6 py-3 text-xs tracking-[0.08em] font-bold hover:bg-black hover:text-white transition-colors cursor-pointer"
                 >
                   ПЕРЕЙТИ К ТОВАРАМ
                 </button>
@@ -1435,8 +1435,8 @@ export default function App() {
                             }}
                             className="text-left cursor-pointer min-w-0"
                           >
-                            <span className="text-[9px] tracking-[0.15em] text-gray-400 font-extrabold block mb-1">{product.brand}</span>
-                            <h3 className="text-[11px] tracking-[0.08em] font-bold normal-case leading-snug">{product.name}</h3>
+                            <span className="text-[10px] tracking-[0.1em] text-gray-500 font-bold block mb-1 uppercase">{product.brand}</span>
+                            <h3 className="text-[13px] tracking-[-0.01em] font-bold normal-case leading-[1.4]">{product.name}</h3>
                           </button>
                           <button
                             type="button"
@@ -1484,7 +1484,7 @@ export default function App() {
             }`}
           >
             <LayoutGrid strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
-            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">КАТАЛОГ</span>
+            <span className="text-[9px] md:text-[10px] tracking-[0.1em] font-bold">КАТАЛОГ</span>
           </button>
 
           <button 
@@ -1498,7 +1498,7 @@ export default function App() {
             }`}
           >
             <Info strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
-            <span className="text-[8px] md:text-[9px] tracking-[0.2em] font-bold">ИНФО</span>
+            <span className="text-[9px] md:text-[10px] tracking-[0.1em] font-bold">ИНФО</span>
           </button>
           
           <button 
@@ -1511,7 +1511,7 @@ export default function App() {
                 {favoriteProducts.length}
               </span>
             )}
-            <span className="text-[8px] md:text-[9px] tracking-[0.12em] font-bold">ИЗБРАННОЕ</span>
+            <span className="text-[9px] md:text-[10px] tracking-[0.07em] font-bold">ИЗБРАННОЕ</span>
           </button>
 
           {isTelegramAdmin && (
@@ -1522,7 +1522,7 @@ export default function App() {
               className="flex flex-col items-center gap-2 group w-20 cursor-pointer text-gray-400 hover:text-black transition-colors"
             >
               <User strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
-              <span className="text-[8px] md:text-[9px] tracking-[0.12em] font-bold">АДМИН</span>
+              <span className="text-[9px] md:text-[10px] tracking-[0.07em] font-bold">АДМИН</span>
             </button>
           )}
         </div>
