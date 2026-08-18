@@ -1401,7 +1401,7 @@ export default function App() {
           </button>
 
           {/* Left: Huge Image */}
-          <div className="w-full md:w-1/2 h-[50vh] md:h-screen bg-gray-100 overflow-hidden relative flex flex-col justify-end">
+          <div className="w-full md:w-1/2 h-[50vh] md:h-screen bg-white overflow-hidden relative flex flex-col justify-end">
             {(() => {
               const pdpImages = (selectedProduct.images && selectedProduct.images.length > 0)
                 ? selectedProduct.images
@@ -1605,7 +1605,7 @@ export default function App() {
                             setIsFavoritesOpen(false);
                             setSelectedProduct(product);
                           }}
-                          className="w-20 aspect-[3/4] bg-gray-100 shrink-0 overflow-hidden cursor-pointer"
+                          className="w-20 aspect-[3/4] bg-white border border-gray-100 shrink-0 overflow-hidden cursor-pointer"
                         >
                           <ImageWithFallback src={productImg} alt={product.name} className="w-full h-full object-contain" />
                         </button>

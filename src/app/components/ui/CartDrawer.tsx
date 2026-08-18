@@ -291,7 +291,7 @@ export default function CartDrawer({
               {cartItems.map((item) => (
                 <div key={`${item.id}-${item.size}-${item.color}`} className="flex gap-4 border-b border-gray-100 pb-6">
                   {/* Image */}
-                  <div className="w-20 aspect-[3/4] bg-gray-100 shrink-0 overflow-hidden">
+                  <div className="w-20 aspect-[3/4] bg-white border border-gray-100 shrink-0 overflow-hidden">
                     <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
                   </div>
                   
