@@ -12,10 +12,11 @@ import {
   Compass,
   ShoppingBag,
   MessageSquare,
-  HelpCircle
+  HelpCircle,
+  Check
 } from "lucide-react";
 import { supabase } from "./utils/supabase";
-import { PriceDisplay } from "./components/ui/CartDrawer";
+import { PriceDisplay, parsePrice, formatBYN } from "./components/ui/CartDrawer";
 import AdminPanel from "./components/AdminPanel";
 import { ImageWithFallback } from "./components/figma/ImageWithFallback";
 import { Toaster } from "sonner";
@@ -155,6 +156,21 @@ function inferBrandFromTitle(title: string): string {
   }
 
   return title.replace(/^[^A-ZА-Я0-9]+/i, "").split(/\s+/)[0] || "НЕИЗВЕСТНО";
+}
+
+function formatItemsCount(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 19) {
+    return `${count} вещей`;
+  }
+  if (mod10 === 1) {
+    return `${count} вещь`;
+  }
+  if (mod10 >= 2 && mod10 <= 4) {
+    return `${count} вещи`;
+  }
+  return `${count} вещей`;
 }
 
 function normalizeProduct(row: any) {
@@ -511,6 +527,15 @@ export default function App() {
       return [];
     }
   });
+  const [selectedFavoriteIds, setSelectedFavoriteIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("underbuy_favorites");
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Tab routing: catalog opens first, while the former home page is now Info.
   const [activeTab, setActiveTab] = useState<"info" | "catalog" | "profile">("catalog");
@@ -666,14 +691,107 @@ export default function App() {
 
   const toggleFavorite = (productId: string | number) => {
     const id = String(productId);
-    setFavoriteIds((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]);
+    setFavoriteIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
+      return next;
+    });
   };
+
+  // Sync selected favorites when favoriteIds changes
+  useEffect(() => {
+    setSelectedFavoriteIds((prev) => {
+      const validPrev = prev.filter((id) => favoriteIds.includes(id));
+      const newAdded = favoriteIds.filter((id) => !prev.includes(id));
+      if (prev.length === 0 && favoriteIds.length > 0) {
+        return favoriteIds;
+      }
+      return [...validPrev, ...newAdded];
+    });
+  }, [favoriteIds]);
 
   const favoriteIdSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
   const favoriteProducts = useMemo(
     () => products.filter((product) => favoriteIdSet.has(String(product.id))),
     [favoriteIdSet, products],
   );
+
+  const selectedFavoriteProducts = useMemo(() => {
+    const set = new Set(selectedFavoriteIds);
+    return favoriteProducts.filter((p) => set.has(String(p.id)));
+  }, [favoriteProducts, selectedFavoriteIds]);
+
+  const toggleSelectFavorite = (productId: string | number) => {
+    const id = String(productId);
+    setSelectedFavoriteIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const selectAllFavorites = () => {
+    if (selectedFavoriteIds.length === favoriteProducts.length) {
+      setSelectedFavoriteIds([]);
+    } else {
+      setSelectedFavoriteIds(favoriteProducts.map((p) => String(p.id)));
+    }
+  };
+
+  const totalSelectedByn = useMemo(() => {
+    return selectedFavoriteProducts.reduce((acc, p) => {
+      if (p.price_byn !== null && p.price_byn !== undefined) {
+        const num = Number(p.price_byn);
+        if (!isNaN(num)) return acc + num;
+      }
+      if (p.price) {
+        const parsed = parsePrice(p.price);
+        return acc + Math.round(parsed * 3.5);
+      }
+      return acc;
+    }, 0);
+  }, [selectedFavoriteProducts]);
+
+  const totalSelectedRub = useMemo(() => {
+    return selectedFavoriteProducts.reduce((acc, p) => {
+      if (p.price_rub !== null && p.price_rub !== undefined) {
+        const num = Number(p.price_rub);
+        if (!isNaN(num)) return acc + num;
+      }
+      if (p.price) {
+        const parsed = parsePrice(p.price);
+        return acc + Math.round(parsed * 100);
+      }
+      return acc;
+    }, 0);
+  }, [selectedFavoriteProducts]);
+
+  const getMultiFavoriteTelegramUrl = () => {
+    if (selectedFavoriteProducts.length === 0) return "#";
+
+    if (selectedFavoriteProducts.length === 1) {
+      const p = selectedFavoriteProducts[0];
+      const priceText = p.price_byn ? `${p.price_byn} BYN` : p.price_rub ? `${p.price_rub} ₽` : p.price ? formatBYN(p.price) : "";
+      const msg = `Привет! Хочу заказать ${p.name}${priceText ? ` (${priceText})` : ""}`;
+      return `https://t.me/und3rme?text=${encodeURIComponent(msg)}`;
+    }
+
+    const itemsList = selectedFavoriteProducts.map((p, idx) => {
+      const priceText = p.price_byn ? `${p.price_byn} BYN` : p.price_rub ? `${p.price_rub} ₽` : p.price ? formatBYN(p.price) : "";
+      return `${idx + 1}. ${p.name}${priceText ? ` — ${priceText}` : ""}`;
+    });
+
+    let totalText = "";
+    if (totalSelectedByn > 0) {
+      totalText = `\n\nОбщая сумма: ${totalSelectedByn.toLocaleString("ru-RU")} BYN`;
+      if (totalSelectedRub > 0) {
+        totalText += ` (~${totalSelectedRub.toLocaleString("ru-RU")} ₽)`;
+      }
+    } else if (totalSelectedRub > 0) {
+      totalText = `\n\nОбщая сумма: ${totalSelectedRub.toLocaleString("ru-RU")} ₽`;
+    }
+
+    const msg = `Привет! Хочу оформить заказ (${formatItemsCount(selectedFavoriteProducts.length)}):\n\n${itemsList.join("\n")}${totalText}`;
+    return `https://t.me/und3rme?text=${encodeURIComponent(msg)}`;
+  };
+
   const brandOptions = useMemo(
     () => ["ВСЕ БРЕНДЫ", ...(Array.from(new Set(products.map((product) => product.brand).filter(Boolean))) as string[])],
     [products],
@@ -1046,7 +1164,7 @@ export default function App() {
                   КАТАЛОГ
                 </h1>
                 <p className="mt-3 text-[9px] md:text-[10px] tracking-[0.16em] text-gray-500 font-bold leading-relaxed">
-                  ВЫБЕРИТЕ ВЕЩЬ — ОФОРМЛЕНИЕ ЗАКАЗА ОТКРОЕТСЯ В TELEGRAM
+                  ВАЖНОЕ УТОЧНЕНИЕ: АКТУАЛЬНУЮ СТОИМОСТЬ И НАЛИЧИЕ УТОЧНЯЙТЕ У МЕНЕДЖЕРА
                 </p>
               </div>
               <div className="text-right shrink-0 pb-0.5">
@@ -1386,8 +1504,15 @@ export default function App() {
             onClick={() => setIsFavoritesOpen(false)}
           />
           <div className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col z-10">
-            <header className="h-[66px] md:h-[74px] px-6 flex justify-between items-center border-b border-gray-200">
-              <h2 className="text-sm tracking-[0.2em] font-medium">ИЗБРАННОЕ</h2>
+            <header className="h-[66px] md:h-[74px] px-6 flex justify-between items-center border-b border-gray-200 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-sm tracking-[0.2em] font-black">ИЗБРАННОЕ</h2>
+                {favoriteProducts.length > 0 && (
+                  <span className="text-[10px] tracking-[0.1em] text-gray-400 font-extrabold">
+                    ({favoriteProducts.length})
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setIsFavoritesOpen(false)}
@@ -1410,55 +1535,179 @@ export default function App() {
                 </button>
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-                {favoriteProducts.map((product) => {
-                  const productImg = product.images?.[0] || product.image_url || product.img;
-                  return (
-                    <div key={`favorite-${product.id}`} className="flex gap-4 border-b border-gray-100 pb-6">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsFavoritesOpen(false);
-                          setSelectedProduct(product);
-                        }}
-                        className="w-24 aspect-[3/4] bg-gray-100 shrink-0 overflow-hidden cursor-pointer"
-                      >
-                        <ImageWithFallback src={productImg} alt={product.name} className="w-full h-full object-contain" />
-                      </button>
-                      <div className="flex-1 flex flex-col justify-between py-1 min-w-0">
-                        <div className="flex justify-between gap-3 items-start">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsFavoritesOpen(false);
-                              setSelectedProduct(product);
-                            }}
-                            className="text-left cursor-pointer min-w-0"
-                          >
-                            <span className="text-[9px] tracking-[0.15em] text-gray-400 font-extrabold block mb-1">{product.brand}</span>
-                            <h3 className="text-[11px] tracking-[0.08em] font-bold normal-case leading-snug">{product.name}</h3>
-                          </button>
-                          <button
-                            type="button"
-                            aria-label="Убрать из избранного"
-                            onClick={() => toggleFavorite(product.id)}
-                            className="p-1 shrink-0 cursor-pointer"
-                          >
-                            <Heart strokeWidth={1.5} className="w-5 h-5 fill-black" />
-                          </button>
-                        </div>
-                        <PriceDisplay
-                          price={product.price}
-                          priceByn={product.price_byn}
-                          priceRub={product.price_rub}
-                          size="sm"
-                          align="start"
-                        />
-                      </div>
+              <>
+                {/* Selection Toolbar */}
+                <div className="px-6 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between shrink-0">
+                  <button
+                    type="button"
+                    onClick={selectAllFavorites}
+                    className="flex items-center gap-2 text-[9px] tracking-[0.15em] font-extrabold text-gray-600 hover:text-black transition-colors cursor-pointer"
+                  >
+                    <div
+                      className={`w-4 h-4 border flex items-center justify-center transition-colors ${
+                        selectedFavoriteIds.length === favoriteProducts.length && favoriteProducts.length > 0
+                          ? "bg-black border-black text-white"
+                          : "bg-white border-black/40"
+                      }`}
+                    >
+                      {selectedFavoriteIds.length === favoriteProducts.length && favoriteProducts.length > 0 && (
+                        <Check strokeWidth={3} className="w-2.5 h-2.5" />
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+                    <span>
+                      {selectedFavoriteIds.length === favoriteProducts.length
+                        ? "СНЯТЬ ВСЕ"
+                        : "ВЫБРАТЬ ВСЕ"}
+                    </span>
+                  </button>
+                  <span className="text-[9px] tracking-[0.12em] font-bold text-gray-400">
+                    ВЫБРАНО: {selectedFavoriteIds.length} ИЗ {favoriteProducts.length}
+                  </span>
+                </div>
+
+                {/* Items List */}
+                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+                  {favoriteProducts.map((product) => {
+                    const productImg = product.images?.[0] || product.image_url || product.img;
+                    const isSelected = selectedFavoriteIds.includes(String(product.id));
+
+                    return (
+                      <div
+                        key={`favorite-${product.id}`}
+                        className={`flex items-start gap-3 border-b border-gray-100 pb-5 transition-opacity ${
+                          isSelected ? "opacity-100" : "opacity-60"
+                        }`}
+                      >
+                        {/* Checkbox button */}
+                        <button
+                          type="button"
+                          onClick={() => toggleSelectFavorite(product.id)}
+                          aria-label={isSelected ? "Снять выбор" : "Выбрать товар"}
+                          className="pt-1 shrink-0 cursor-pointer group"
+                        >
+                          <div
+                            className={`w-5 h-5 border flex items-center justify-center transition-all ${
+                              isSelected
+                                ? "bg-black border-black text-white shadow-sm"
+                                : "bg-white border-black/30 group-hover:border-black"
+                            }`}
+                          >
+                            {isSelected && (
+                              <Check strokeWidth={3} className="w-3.5 h-3.5" />
+                            )}
+                          </div>
+                        </button>
+
+                        {/* Product thumbnail */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsFavoritesOpen(false);
+                            setSelectedProduct(product);
+                          }}
+                          className="w-20 aspect-[3/4] bg-gray-100 shrink-0 overflow-hidden cursor-pointer"
+                        >
+                          <ImageWithFallback src={productImg} alt={product.name} className="w-full h-full object-contain" />
+                        </button>
+
+                        {/* Product info */}
+                        <div className="flex-1 flex flex-col justify-between py-0.5 min-w-0">
+                          <div className="flex justify-between gap-2 items-start">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsFavoritesOpen(false);
+                                setSelectedProduct(product);
+                              }}
+                              className="text-left cursor-pointer min-w-0"
+                            >
+                              <span className="text-[9px] tracking-[0.15em] text-gray-400 font-extrabold block mb-0.5">
+                                {product.brand}
+                              </span>
+                              <h3 className="text-[11px] tracking-[0.05em] font-bold normal-case leading-snug line-clamp-2">
+                                {product.name}
+                              </h3>
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Убрать из избранного"
+                              onClick={() => toggleFavorite(product.id)}
+                              className="p-1 shrink-0 cursor-pointer text-gray-400 hover:text-black transition-colors"
+                            >
+                              <Heart strokeWidth={1.5} className="w-4 h-4 fill-black text-black" />
+                            </button>
+                          </div>
+                          <div className="mt-2.5">
+                            <PriceDisplay
+                              price={product.price}
+                              priceByn={product.price_byn}
+                              priceRub={product.price_rub}
+                              size="sm"
+                              align="start"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Sticky Checkout & Total Footer */}
+                <footer className="p-5 md:p-6 border-t border-gray-200 bg-white shrink-0 flex flex-col gap-4 shadow-[0_-8px_20px_rgba(0,0,0,0.04)]">
+                  {/* Price summary row */}
+                  <div className="flex justify-between items-end">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] tracking-[0.2em] font-extrabold text-gray-400 uppercase">
+                        ИТОГО К ОФОРМЛЕНИЮ:
+                      </span>
+                      <span className="text-[10px] tracking-[0.1em] font-bold text-gray-600 uppercase mt-0.5">
+                        {selectedFavoriteProducts.length > 0
+                          ? formatItemsCount(selectedFavoriteProducts.length)
+                          : "Ничего не выбрано"}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      {selectedFavoriteProducts.length > 0 ? (
+                        <div>
+                          <div className="text-lg md:text-xl font-black tracking-tight leading-none">
+                            {totalSelectedByn > 0 ? `${totalSelectedByn.toLocaleString("ru-RU")} BYN` : "По запросу"}
+                          </div>
+                          {totalSelectedRub > 0 && (
+                            <div className="text-[10px] font-bold text-gray-400 tracking-wider mt-1">
+                              ~{totalSelectedRub.toLocaleString("ru-RU")} ₽
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-base font-extrabold text-gray-300">0 BYN</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Checkout button */}
+                  {selectedFavoriteProducts.length > 0 ? (
+                    <a
+                      href={getMultiFavoriteTelegramUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-black text-white border border-black py-3.5 px-4 text-[11px] tracking-[0.18em] font-extrabold uppercase transition-all flex items-center justify-center gap-3 group cursor-pointer hover:bg-gray-800 active:scale-[0.99]"
+                    >
+                      <span>
+                        ПЕРЕЙТИ К ОФОРМЛЕНИЮ ({formatItemsCount(selectedFavoriteProducts.length).toUpperCase()})
+                      </span>
+                      <ExternalLink strokeWidth={1.5} className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full bg-gray-100 text-gray-400 border border-gray-200 py-3.5 px-4 text-[11px] tracking-[0.18em] font-extrabold uppercase cursor-not-allowed text-center"
+                    >
+                      ВЫБЕРИТЕ ТОВАРЫ ДЛЯ ЗАКАЗА
+                    </button>
+                  )}
+                </footer>
+              </>
             )}
           </div>
         </div>
