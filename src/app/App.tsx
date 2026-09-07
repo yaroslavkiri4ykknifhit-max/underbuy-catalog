@@ -471,29 +471,45 @@ function ReviewCard({
 
 function FaqItem({ 
   question, 
+  children,
   answer 
 }: { 
   question: string; 
-  answer: string; 
+  children?: React.ReactNode;
+  answer?: string | React.ReactNode; 
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const content = children || answer;
+
   return (
     <div className="border border-black bg-white select-none transition-all duration-300">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center p-4 text-left cursor-pointer transition-colors hover:bg-gray-50"
+        className="w-full flex justify-between items-center p-4 md:p-5 text-left cursor-pointer transition-colors hover:bg-gray-50"
       >
-        <span className="text-[11px] tracking-[0.1em] font-black uppercase pr-4">{question}</span>
+        <span className="text-[11px] md:text-xs tracking-[0.1em] font-black uppercase pr-4 leading-snug">{question}</span>
         <ChevronDown 
           strokeWidth={1.5} 
           className={`w-4 h-4 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} 
         />
       </button>
-      <div className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-[500px] border-t border-black p-4" : "max-h-0"}`}>
-        <p className="text-[10px] tracking-[0.05em] text-gray-600 uppercase leading-relaxed font-bold">
-          {answer}
-        </p>
+      <div className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-[1600px] border-t border-black p-4 md:p-6" : "max-h-0"}`}>
+        <div className="text-xs md:text-[13px] text-gray-700 normal-case leading-relaxed font-normal space-y-3">
+          {typeof content === "string" ? (
+            content.split("\n\n").map((para, idx) => (
+              <p key={idx} className="leading-relaxed">
+                {para.split("\n").map((line, lineIdx) => (
+                  <span key={lineIdx} className={line.startsWith("• ") || line.startsWith("- ") ? "block pl-1 font-medium text-gray-800" : "block"}>
+                    {line}
+                  </span>
+                ))}
+              </p>
+            ))
+          ) : (
+            content
+          )}
+        </div>
       </div>
     </div>
   );
@@ -902,7 +918,7 @@ export default function App() {
               <button 
                 onClick={() => setIsFavoritesOpen(true)}
                 className="p-2 group cursor-pointer relative"
-                aria-label="Открыть избранное"
+                aria-label="Открыть избранное / корзину"
               >
                 <Heart strokeWidth={1} className="w-5 h-5 md:w-6 md:h-6 group-hover:opacity-50 transition-opacity" />
                 {favoriteProducts.length > 0 && (
@@ -1028,32 +1044,56 @@ export default function App() {
                 <div className="flex flex-col gap-6 animate-in fade-in duration-200">
                   <h2 className="text-xs md:text-sm tracking-[0.2em] font-extrabold uppercase border-b border-black pb-2">КАК СДЕЛАТЬ ЗАКАЗ</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="flex gap-4 items-start border border-black p-4 bg-white">
+                    <div className="flex gap-4 items-start border border-black p-4 md:p-5 bg-white">
                       <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">1</div>
-                      <div>
-                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Выбор вещи</h3>
-                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Выберите понравившуюся вещь в каталоге и откройте карточку товара</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-[11px] tracking-[0.15em] font-black uppercase">Выбор вещи</h3>
+                        <p className="text-[11px] text-gray-600 mt-2 normal-case leading-relaxed font-normal">
+                          Выберите понравившуюся вещь в каталоге и откройте карточку товара.
+                        </p>
                       </div>
                     </div>
-                    <div className="flex gap-4 items-start border border-black p-4 bg-white">
+                    <div className="flex gap-4 items-start border border-black p-4 md:p-5 bg-white">
                       <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">2</div>
-                      <div>
-                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оформление</h3>
-                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">Нажмите «Перейти к оформлению» — откроется Telegram с готовым сообщением менеджеру</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-[11px] tracking-[0.15em] font-black uppercase">Оформление</h3>
+                        <p className="text-[11px] text-gray-600 mt-2 normal-case leading-relaxed font-normal">
+                          Нажмите <span className="font-bold text-black">«Перейти к оформлению»</span> — откроется диалог в Telegram с готовым сообщением менеджеру.
+                        </p>
                       </div>
                     </div>
-                    <div className="flex gap-4 items-start border border-black p-4 bg-white">
+                    <div className="flex gap-4 items-start border border-black p-4 md:p-5 bg-white">
                       <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">3</div>
-                      <div>
-                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Доставка</h3>
-                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">После того как вы свяжетесь с менеджером, он ответит на все ваши вопросы, предоставит размерную таблицу, а также предложит два вида доставки на выбор: авиа или авто — и рассчитает полную стоимость вашего заказа</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-[11px] tracking-[0.15em] font-black uppercase">Доставка</h3>
+                        <div className="text-[11px] text-gray-600 mt-2 normal-case leading-relaxed font-normal space-y-1.5">
+                          <p>Менеджер ответит на все вопросы, предоставит размерную сетку и рассчитает стоимость доставки.</p>
+                          <p className="text-black font-semibold">
+                            Два вида доставки на выбор:
+                          </p>
+                          <div className="space-y-0.5 text-gray-700 pl-1">
+                            <div>• <span className="font-semibold text-black">Авиа</span> — быстрая доставка (5–10 дней)</div>
+                            <div>• <span className="font-semibold text-black">Авто</span> — экономная доставка (18–25 дней)</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-4 items-start border border-black p-4 bg-white">
+                    <div className="flex gap-4 items-start border border-black p-4 md:p-5 bg-white">
                       <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-extrabold text-xs shrink-0 select-none">4</div>
-                      <div>
-                        <h3 className="text-[11px] tracking-[0.1em] font-extrabold uppercase">Оплата</h3>
-                        <p className="text-[10px] tracking-[0.05em] text-gray-500 mt-1 uppercase leading-relaxed font-bold">После подтверждения заказа мы направим вам реквизиты для оплаты. Принимаем: Карты РФ / Карты РБ / Карты банков стран СНГ / Крипта</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-[11px] tracking-[0.15em] font-black uppercase">Оплата</h3>
+                        <div className="text-[11px] text-gray-600 mt-2 normal-case leading-relaxed font-normal space-y-1.5">
+                          <p>После подтверждения заказа менеджер направит реквизиты для оплаты.</p>
+                          <p className="text-black font-semibold">
+                            Принимаем:
+                          </p>
+                          <div className="space-y-0.5 text-gray-700 pl-1">
+                            <div>• Карты банков РФ (МИР, Visa, Mastercard, СБП)</div>
+                            <div>• Карты банков РБ (Белкарт, Visa, Mastercard)</div>
+                            <div>• Карты любых банков стран СНГ</div>
+                            <div>• Криптовалюту (USDT и др.)</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1115,38 +1155,145 @@ export default function App() {
                 <div className="flex flex-col gap-6 animate-in fade-in duration-200">
                   <h2 className="text-xs md:text-sm tracking-[0.2em] font-extrabold uppercase border-b border-black pb-2">ЧАСТО ЗАДАВАЕМЫЕ ВОПРОСЫ</h2>
                   <div className="flex flex-col gap-4 max-w-3xl">
-                    <FaqItem 
-                      question="ЧЕМ НАШ МАГАЗИН ЛУЧШЕ ДРУГИХ?" 
-                      answer="Мы ответим на все вопросы и поможем подобрать лучший вариант под ваш бюджет. Если нужный вам товар производится в нескольких вариантах качества, мы предложим вам все доступные фабричные версии. Сопровождаем на всех этапах — от оформления до получения товара. Мы всегда на связи и оперативно отвечаем на любые вопросы. Доставка: Мы предлагаем проверенные способы доставки (Авиа/Авто) и всегда честно информируем о статусе заказа — вы точно знаете, где находится ваш товар. Привозим редкие товары, технику (ноутбуки, телефоны) и электротранспорт по всей территории СНГ (работаем как в розницу, так и оптом). Удобная оплата: Предлагаем разные способы оплаты (карты РФ/РБ/СНГ, криптовалюта) и гибкие условия, включая систему оплаты частями 50/50." 
-                    />
-                    <FaqItem 
-                      question="Можно ли заказать, если товара нет на площадке?" 
-                      answer="Да! Вы можете прислать ссылку или фото абсолютно любого товара нашему менеджеру — мы найдем, выкупим и доставим его для вас. Найдем любой товар по лучшей цене (как качественную реплику, так и оригинал). Доставляем электротранспорт, ноутбуки, мобильные телефоны и многое другое. Работаем как с розничными, так и с оптовыми заказами." 
-                    />
-                    <FaqItem 
-                      question="Через сколько я получу заказ?" 
-                      answer="Сроки зависят от выбранного способа. Указанное время — это доставка до нас (доставка от нас к вам (СДЭК, Европочта/Белпочта) рассчитывается отдельно): Авиа: 5–10 дней, с момента отправки из Китая. Авто: 18–25 дней, с момента отправки из Китая. Важно: Сроки являются примерными. Логистика — процесс сложный, поэтому возможны небольшие сдвиги из-за работы таможенных или транспортных служб. Мы не всегда можем ускорить этот процесс, но всегда держим вас в курсе и оперативно сообщаем о любых изменениях." 
-                    />
-                    <FaqItem 
-                      question="Как отследить заказ?" 
-                      answer="Мы информируем вас о статусе на каждом этапе: На складе в Китае: как только товар прибывает на наш склад, мы присылаем вам фотографию. В пути: дальнейший процесс зависит от выбранного способа: Авиа: после отправки товара мы предоставим трек-номер для отслеживания на сайте belpost.by. Авто: мы предоставим номер контейнера. Вы сможете отслеживать статус в таблице, как только номер контейнера появится в таблице, мы предоставим вам ее. Прибытие к нам: когда товар будет у нас, мы проверим его, сделаем подробные фото и пришлем их вам. После этого отправим ваш заказ выбранным способом (СДЭК, Европочта, Белпочта) либо передадим при личной встрече." 
-                    />
-                    <FaqItem 
-                      question="Что входит в стоимость?" 
-                      answer="Итоговая стоимость вашего заказа складывается из: Себестоимости товара. Доставки из Китая до нас (авиа или авто). Нашей комиссии за работу. Обратите внимание: Доставка от нас до вас (СДЭК, Европочта/Белпочта) оплачивается отдельно при получении. Если вам удобнее оплатить всё сразу, сообщите менеджеру — мы включим её в общий счет." 
-                    />
-                    <FaqItem 
-                      question="Какие способы оплаты?" 
-                      answer="Мы принимаем: Карты РФ / РБ / стран СНГ, Криптовалюту" 
-                    />
-                    <FaqItem 
-                      question="Что если нет всей суммы сразу, можно 50/50?" 
-                      answer="Если вам неудобно оплачивать всю сумму сразу, мы предлагаем систему оплаты частями: Первые 50%: вносятся при оформлении заказа. Оставшиеся 50%: вносятся после того, как товар прибыл к нам, мы прислали вам отчетные фотографии и подготовили заказ к отправке." 
-                    />
-                    <FaqItem 
-                      question="Возможен ли возврат товара?" 
-                      answer="Возврат возможен только в двух случаях: Брак: производственный дефект (например, поврежденная фурнитура или швы). Размер: если товар не подошел по размеру и сохранил товарный вид (бирки, отсутствие следов носки). Важно: если при заказе была предоставлена размерная сетка и вы выбрали размер по ней, возврат по причине «не подошел размер» не осуществляется." 
-                    />
+                    <FaqItem question="ЧЕМ НАШ МАГАЗИН ЛУЧШЕ ДРУГИХ?">
+                      <div className="space-y-3">
+                        <p>
+                          <span className="font-bold text-black">• Индивидуальный подбор под ваш бюджет:</span><br />
+                          Мы ответим на все вопросы и поможем найти лучший вариант. Если нужная вам вещь производится в нескольких вариантах качества на разных фабриках, мы честно предоставим и объясним все доступные версии.
+                        </p>
+                        <p>
+                          <span className="font-bold text-black">• Полное сопровождение на всех этапах:</span><br />
+                          От момента оформления до получения посылки в руки. Мы всегда на связи и оперативно отвечаем на любые вопросы.
+                        </p>
+                        <p>
+                          <span className="font-bold text-black">• Проверенная логистика (Авиа / Авто):</span><br />
+                          Всегда честно информируем о статусе заказа — вы точно знаете, где в данный момент находится ваш товар.
+                        </p>
+                        <p>
+                          <span className="font-bold text-black">• Редкие товары, техника и электротранспорт:</span><br />
+                          Привозим редкие и эксклюзивные товары, технику (ноутбуки, телефоны) и электротранспорт по всей территории СНГ (работаем как в розницу, так и оптом).
+                        </p>
+                        <p>
+                          <span className="font-bold text-black">• Удобная и безопасная оплата:</span><br />
+                          Предлагаем разные способы оплаты (карты РФ, РБ, банков стран СНГ, криптовалюта) и гибкие условия, включая оплату частями 50/50.
+                        </p>
+                      </div>
+                    </FaqItem>
+
+                    <FaqItem question="МОЖНО ЛИ ЗАКАЗАТЬ, ЕСЛИ ТОВАРА НЕТ НА ПЛОЩАДКЕ?">
+                      <div className="space-y-3">
+                        <p>
+                          <strong>Да, абсолютно!</strong> Вы можете прислать ссылку или фотографию абсолютно любого интересующего вас товара нашему менеджеру в Telegram — мы найдем, выкупим и безопасно доставим его для вас.
+                        </p>
+                        <div className="space-y-1.5 pl-1">
+                          <p>• Найдем любой товар по лучшей цене (как качественную фабричную реплику, так и 100% оригинал).</p>
+                          <p>• Доставляем одежду, обувь, сумки, аксессуары, технику (ноутбуки, смартфоны) и электротранспорт.</p>
+                          <p>• Работаем как с розничными покупками, так и с оптовыми поставками.</p>
+                        </div>
+                      </div>
+                    </FaqItem>
+
+                    <FaqItem question="ЧЕРЕЗ СКОЛЬКО Я ПОЛУЧУ ЗАКАЗ?">
+                      <div className="space-y-3">
+                        <p>
+                          Сроки зависят от выбранного способа перевозки. Указанное время — это доставка со склада в Китае до нашего склада в Минске:
+                        </p>
+                        <div className="space-y-1.5 pl-1">
+                          <p>
+                            <span className="font-bold text-black">• Авиа-доставка:</span> 5–10 дней с момента отправки со склада в Китае.
+                          </p>
+                          <p>
+                            <span className="font-bold text-black">• Авто-доставка:</span> 18–25 дней с момента отправки со склада в Китае.
+                          </p>
+                        </div>
+                        <p className="text-gray-500 text-[11px]">
+                          Доставка от нашего склада до вашего города (СДЭК, Европочта / Белпочта) рассчитывается и оплачивается отдельно при получении.
+                        </p>
+                        <p className="border-l-2 border-black pl-3 text-gray-600">
+                          <strong>Важно:</strong> Сроки являются ориентировочными. Международная логистика — многоэтапный процесс, поэтому возможны небольшие сдвиги из-за работы таможенных служб или транспортных компаний. Мы всегда держим вас в курсе и оперативно сообщаем о каждом статусе.
+                        </p>
+                      </div>
+                    </FaqItem>
+
+                    <FaqItem question="КАК ОТСЛЕДИТЬ ЗАКАЗ?">
+                      <div className="space-y-3">
+                        <p>Мы информируем вас о статусе заказа на каждом этапе:</p>
+                        <div className="space-y-2 pl-1">
+                          <p>
+                            <span className="font-bold text-black">1. На складе в Китае:</span><br />
+                            Как только товар прибывает на склад, мы делаем подробные фотографии и присылаем их вам для проверки.
+                          </p>
+                          <p>
+                            <span className="font-bold text-black">2. В пути:</span><br />
+                            • При авиа-доставке — предоставляем трек-номер для отслеживания посылки на сайте belpost.by.<br />
+                            • При авто-доставке — предоставляем номер контейнера и ссылку на таблицу отслеживания движения рейса.
+                          </p>
+                          <p>
+                            <span className="font-bold text-black">3. Прибытие к нам:</span><br />
+                            Когда товар поступит к нам в Минск, мы повторно осматриваем его, делаем отчетные фотографии и отправляем вам. После этого передаем заказ выбранным способом (СДЭК, Европочта, Белпочта) либо при личной встрече.
+                          </p>
+                        </div>
+                      </div>
+                    </FaqItem>
+
+                    <FaqItem question="ЧТО ВХОДИТ В СТОИМОСТЬ?">
+                      <div className="space-y-3">
+                        <p>Итоговая стоимость вашего заказа складывается из:</p>
+                        <div className="space-y-1.5 pl-1">
+                          <p>1. Себестоимости товара.</p>
+                          <p>2. Доставки из Китая до нашего склада (авиа или авто на выбор).</p>
+                          <p>3. Нашей комиссии за выкуп, проверку качества и сопровождение.</p>
+                        </div>
+                        <p className="border-l-2 border-black pl-3 text-gray-600">
+                          <strong>Обратите внимание:</strong> Доставка от нас до вас (СДЭК, Европочта / Белпочта) оплачивается отдельно при получении посылки. Если вам удобнее оплатить всё сразу — сообщите менеджеру, мы включим её в общий счет.
+                        </p>
+                      </div>
+                    </FaqItem>
+
+                    <FaqItem question="КАКИЕ СПОСОБЫ ОПЛАТЫ?">
+                      <div className="space-y-3">
+                        <p>Мы принимаем все удобные и безопасные способы оплаты:</p>
+                        <div className="space-y-1.5 pl-1">
+                          <p>• <strong>Банковские карты РФ</strong> (МИР, Visa, Mastercard, СБП)</p>
+                          <p>• <strong>Банковские карты РБ</strong> (Белкарт, Visa, Mastercard)</p>
+                          <p>• <strong>Карты банков любых стран СНГ</strong></p>
+                          <p>• <strong>Криптовалюта</strong> (USDT TRC-20, TON, BTC и др.)</p>
+                        </div>
+                      </div>
+                    </FaqItem>
+
+                    <FaqItem question="ЧТО ЕСЛИ НЕТ ВСЕЙ СУММЫ СРАЗУ, МОЖНО 50/50?">
+                      <div className="space-y-3">
+                        <p>
+                          <strong>Да, конечно!</strong> Если вам неудобно оплачивать всю сумму сразу, мы предлагаем удобную систему оплаты частями:
+                        </p>
+                        <div className="space-y-2 pl-1">
+                          <p>
+                            <span className="font-bold text-black">• Первые 50%:</span> вносятся при подтверждении и первичном оформлении выкупа заказа.
+                          </p>
+                          <p>
+                            <span className="font-bold text-black">• Оставшиеся 50%:</span> вносятся после того, как товар прибыл к нам, мы предоставили вам подробный фотоотчет и подготовили посылку к отправке вам.
+                          </p>
+                        </div>
+                      </div>
+                    </FaqItem>
+
+                    <FaqItem question="ВОЗМОЖЕН ЛИ ВОЗВРАТ ТОВАРА?">
+                      <div className="space-y-3">
+                        <p>Возврат возможен в двух случаях:</p>
+                        <div className="space-y-2 pl-1">
+                          <p>
+                            <span className="font-bold text-black">• Производственный брак:</span> дефект фабрики (например, поврежденная фурнитура, замок, ткань или швы).
+                          </p>
+                          <p>
+                            <span className="font-bold text-black">• Несоответствие размера:</span> если вещь не подошла по размеру и полностью сохранила первоначальный товарный вид (оригинальные бирки, фабричная упаковка, отсутствие следов носки и запахов).
+                          </p>
+                        </div>
+                        <p className="border-l-2 border-black pl-3 text-gray-600">
+                          <strong>Важно:</strong> Если перед заказом менеджер предоставил вам точную размерную сетку и вы согласовали размер по ней, возврат по причине «не подошел размер» не осуществляется.
+                        </p>
+                      </div>
+                    </FaqItem>
                   </div>
                 </div>
               )}
@@ -1499,14 +1646,14 @@ export default function App() {
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex justify-end">
           <button
             type="button"
-            aria-label="Закрыть избранное"
+            aria-label="Закрыть избранное / корзину"
             className="absolute inset-0 cursor-default"
             onClick={() => setIsFavoritesOpen(false)}
           />
           <div className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col z-10">
             <header className="h-[66px] md:h-[74px] px-6 flex justify-between items-center border-b border-gray-200 shrink-0">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-sm tracking-[0.2em] font-black">ИЗБРАННОЕ</h2>
+                <h2 className="text-xs md:text-sm tracking-[0.16em] font-black">ИЗБРАННОЕ / КОРЗИНА</h2>
                 {favoriteProducts.length > 0 && (
                   <span className="text-[10px] tracking-[0.1em] text-gray-400 font-extrabold">
                     ({favoriteProducts.length})
@@ -1525,7 +1672,7 @@ export default function App() {
             {favoriteProducts.length === 0 ? (
               <div className="flex-1 flex flex-col justify-center items-center p-6 gap-5 text-center">
                 <Heart strokeWidth={1} className="w-9 h-9 text-gray-300" />
-                <p className="text-[10px] tracking-[0.25em] text-gray-400">В ИЗБРАННОМ ПОКА ПУСТО</p>
+                <p className="text-[10px] tracking-[0.25em] text-gray-400">В ИЗБРАННОМ / КОРЗИНЕ ПОКА ПУСТО</p>
                 <button
                   type="button"
                   onClick={() => setIsFavoritesOpen(false)}
@@ -1752,7 +1899,7 @@ export default function App() {
           
           <button 
             onClick={() => setIsFavoritesOpen(true)}
-            className={`flex flex-col items-center gap-2 group w-20 cursor-pointer relative transition-colors ${isFavoritesOpen ? "text-black" : "text-gray-400 hover:text-black"}`}
+            className={`flex flex-col items-center gap-2 group min-w-[90px] px-1 cursor-pointer relative transition-colors ${isFavoritesOpen ? "text-black" : "text-gray-400 hover:text-black"}`}
           >
             <Heart strokeWidth={1.5} className="w-5 h-5 transition-transform group-hover:scale-110" />
             {favoriteProducts.length > 0 && (
@@ -1760,7 +1907,7 @@ export default function App() {
                 {favoriteProducts.length}
               </span>
             )}
-            <span className="text-[8px] md:text-[9px] tracking-[0.12em] font-bold">ИЗБРАННОЕ</span>
+            <span className="text-[7.5px] md:text-[9px] tracking-[0.08em] font-bold whitespace-nowrap">ИЗБРАННОЕ / КОРЗИНА</span>
           </button>
 
           {isTelegramAdmin && (
